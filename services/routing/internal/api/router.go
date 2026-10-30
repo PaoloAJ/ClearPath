@@ -3,6 +3,7 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -34,6 +35,7 @@ func NewRouter(graphs GraphSource, blocks BarrierSource, requireAuth func(http.H
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
+	r.Use(logSlow)
 
 	r.Get("/healthz", s.healthz)
 
@@ -43,4 +45,17 @@ func NewRouter(graphs GraphSource, blocks BarrierSource, requireAuth func(http.H
 		r.Post("/routes/check", s.routesCheck)
 	})
 	return r
+}
+
+// SlowRequestThreshold is the response time goal on the demo graph. Slower requests get logged.
+const SlowRequestThreshold = 200 * time.Millisecond
+
+func logSlow(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		if took := time.Since(start); took > SlowRequestThreshold {
+			slog.Warn("slow request", "method", r.Method, "path", r.URL.Path, "took", took)
+		}
+	})
 }
