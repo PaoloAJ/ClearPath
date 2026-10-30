@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": 1, "source": 1, "target": 2, "slope_pct": 1.5, "stairs": false, "surface": "paved", "indoor": false, "bike_ok": true },
+      "geometry": { "type": "LineString", "coordinates": [[-82.3429, 29.6516], [-82.3433, 29.6499]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 2, "source": 2, "target": 3, "slope_pct": -0.5, "stairs": false, "surface": "brick", "indoor": false, "bike_ok": true },
+      "geometry": { "type": "LineString", "coordinates": [[-82.3433, 29.6499], [-82.3437, 29.6481]] }
+    }
+  ]
+}

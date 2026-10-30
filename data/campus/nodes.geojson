@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": 1, "kind": "entrance", "building": "Library West", "floor": 1 },
+      "geometry": { "type": "Point", "coordinates": [-82.3429, 29.6516] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 2, "kind": "junction" },
+      "geometry": { "type": "Point", "coordinates": [-82.3433, 29.6499] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 3, "kind": "entrance", "building": "Marston", "floor": 1 },
+      "geometry": { "type": "Point", "coordinates": [-82.3437, 29.6481] }
+    }
+  ]
+}
