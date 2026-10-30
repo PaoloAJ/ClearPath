@@ -3,7 +3,7 @@
 -- times can be compared exactly.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(28);
 
 create function pg_temp.act_as(user_id text, app_role text default null)
 returns void
@@ -118,6 +118,17 @@ select is(
   (select expires_at from public.alerts where id = pg_temp.recall('student')),
   now() + interval '4 hours',
   '"still there" pushes expiry to 4 hours from now'
+);
+
+update public.alerts set expires_at = now() + interval '1 hour' where id = pg_temp.recall('student');
+select pg_temp.act_as('user_b');
+select public.vote_alert(pg_temp.recall('student'), 'still_there');
+
+reset role;
+select is(
+  (select expires_at from public.alerts where id = pg_temp.recall('student')),
+  now() + interval '1 hour',
+  'repeating "still there" from the same user does not extend the alert again'
 );
 
 select pg_temp.act_as('user_b');

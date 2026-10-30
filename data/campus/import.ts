@@ -76,6 +76,7 @@ function check() {
   const errors: string[] = [];
   const nodeById = new Map<unknown, Feature<Point>>();
   const elevatorIds = new Set<unknown>();
+  const elevatorNode = new Map<unknown, unknown>(); // elevator_id → node id
 
   for (const n of nodes.features) {
     const p = n.properties;
@@ -86,14 +87,21 @@ function check() {
       if (p.elevator_id == null || !p.elevator_name || !p.building) {
         errors.push(`node ${p.id}: elevator nodes need elevator_id, elevator_name, and building`);
       }
-      if (elevatorIds.has(p.elevator_id)) errors.push(`node ${p.id}: duplicate elevator_id ${p.elevator_id}`);
-      elevatorIds.add(p.elevator_id);
+      if (p.elevator_id != null) {
+        if (elevatorIds.has(p.elevator_id)) errors.push(`node ${p.id}: duplicate elevator_id ${p.elevator_id}`);
+        elevatorIds.add(p.elevator_id);
+        elevatorNode.set(p.elevator_id, p.id);
+      }
     }
   }
 
   const edgeIds = new Set<unknown>();
   const adjacency = new Map<unknown, unknown[]>();
-  const link = (a: unknown, b: unknown) => adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
+  const link = (a: unknown, b: unknown) => {
+    const list = adjacency.get(a);
+    if (list) list.push(b);
+    else adjacency.set(a, [b]);
+  };
 
   for (const e of edges.features) {
     const p = e.properties;
@@ -102,8 +110,17 @@ function check() {
     if (p.surface != null && !SURFACES.has(String(p.surface))) {
       errors.push(`edge ${p.id}: unknown surface ${JSON.stringify(p.surface)}`);
     }
-    if (p.elevator_id != null && !elevatorIds.has(p.elevator_id)) {
-      errors.push(`edge ${p.id}: elevator_id ${p.elevator_id} has no elevator node`);
+    for (const key of ['stairs', 'indoor', 'bike_ok'] as const) {
+      if (typeof p[key] !== 'boolean') errors.push(`edge ${p.id}: ${key} must be true or false, got ${JSON.stringify(p[key])}`);
+    }
+    if (typeof p.slope_pct !== 'number') errors.push(`edge ${p.id}: slope_pct must be a number`);
+    if (p.elevator_id != null) {
+      const at = elevatorNode.get(p.elevator_id);
+      if (at === undefined) {
+        errors.push(`edge ${p.id}: elevator_id ${p.elevator_id} has no elevator node`);
+      } else if (p.source !== at && p.target !== at) {
+        errors.push(`edge ${p.id}: elevator_id ${p.elevator_id} but doesn't touch elevator node ${at}`);
+      }
     }
 
     const coords = e.geometry.coordinates;
@@ -129,7 +146,8 @@ function check() {
     }
   }
 
-  const [start] = nodeById.keys();
+  // Start from a node with edges, so one orphan doesn't make the whole graph look disconnected.
+  const start = [...nodeById.keys()].find((id) => adjacency.has(id));
   if (start !== undefined) {
     const seen = new Set([start]);
     const queue = [start];
@@ -149,8 +167,9 @@ function check() {
 
   const lngs = nodes.features.map((n) => n.geometry.coordinates[0]);
   const lats = nodes.features.map((n) => n.geometry.coordinates[1]);
-  const inZone = (lat: number, lng: number) =>
-    lat >= Math.min(...lats) && lat <= Math.max(...lats) && lng >= Math.min(...lngs) && lng <= Math.max(...lngs);
+  const [minLat, maxLat, minLng, maxLng] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  const inZone = (lat: number, lng: number) => lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+  const wholeMinutes = (n: unknown) => Number.isInteger(n) && (n as number) >= 0;
 
   for (const e of samples.elevators) {
     if (!elevatorIds.has(e.elevator_id)) errors.push(`samples: elevator ${e.elevator_id} has no elevator node`);
@@ -163,8 +182,13 @@ function check() {
     alertIds.add(a.id);
     if (!ALERT_TYPES.has(a.type)) errors.push(`samples: alert ${a.id} has unknown type ${JSON.stringify(a.type)}`);
     if (!inZone(a.lat, a.lng)) errors.push(`samples: alert ${a.id} is outside the demo zone`);
-    if (!a.verified && a.minutes_ago >= ALERT_TTL_MINUTES) {
-      errors.push(`samples: alert ${a.id} would already be expired (${a.minutes_ago} min old, unverified)`);
+    if (!wholeMinutes(a.minutes_ago) || !wholeMinutes(a.confirmations)) {
+      errors.push(`samples: alert ${a.id} needs whole, non-negative minutes_ago and confirmations`);
+    }
+    if (!(a.radius_m > 0)) errors.push(`samples: alert ${a.id} needs radius_m above 0`);
+    // Same rule render() uses for expiry: 4 h after the last report or confirmation.
+    if (!a.verified && lastActivityMinutes(a) >= ALERT_TTL_MINUTES) {
+      errors.push(`samples: alert ${a.id} would already be expired (last activity ${lastActivityMinutes(a)} min ago, unverified)`);
     }
   }
 
@@ -172,6 +196,11 @@ function check() {
     console.error(`campus graph has ${errors.length} problem(s):\n  ${errors.join('\n  ')}`);
     process.exit(1);
   }
+}
+
+// Confirmations are placed halfway between the report and now.
+function lastActivityMinutes(a: AlertSample): number {
+  return a.confirmations > 0 ? Math.floor(a.minutes_ago / 2) : a.minutes_ago;
 }
 
 function render(): string {
@@ -232,7 +261,7 @@ function render(): string {
   for (const a of samples.alerts) {
     if (a.note) out.push(`-- ${a.note}`);
     const createdAgo = a.minutes_ago;
-    const lastActivityAgo = a.confirmations > 0 ? Math.floor(createdAgo / 2) : createdAgo;
+    const lastActivityAgo = lastActivityMinutes(a);
     const expiresAt = a.verified
       ? `'infinity'`
       : `now() + interval '${ALERT_TTL_MINUTES - lastActivityAgo} minutes'`;
