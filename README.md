@@ -465,6 +465,8 @@ You can't count on a real construction fence showing up during a presentation, s
 
 Demo mode also makes usability-test tasks repeatable from one participant to the next.
 
+On the database side, the demo RPCs (`demo_inject_alert`, `demo_toggle_elevator`, `demo_reset`) only run when `private.app_settings.demo_enabled` is true. `make seed` turns it on locally. On a hosted project, turn it on for a presentation with `update private.app_settings set demo_enabled = true;` and off again afterward. The sample state comes from `data/campus/samples.json`.
+
 ---
 
 ## Accessibility

@@ -64,14 +64,14 @@ Helpers you should use in policies: `public.requesting_user_id()` (Clerk `sub`) 
 - [x] **`vote_alert`** (R5): upsert the caller's vote (one per user per alert, changing it overwrites). **Still there** pushes `expires_at` to `now() + 4h` for unverified alerts. **It's cleared** from 2 distinct users sets `resolved_at`. Verified alerts are resolved only by facilities.
 - [x] **`set_elevator_status`** (R1, R5): insert into `elevator_reports`, update `elevators.status` and `last_reported_at`. `verified` is true only for facilities.
 - [x] **Storage policies**: signed-in users upload to `report-photos/<their user id>/...`, and signed-in users can read.
-- [ ] **Demo RPCs**: `demo_inject_alert`, `demo_toggle_elevator`, `demo_reset` (restore seed state). Guard them so they can't run in production (for example, check a `demo_enabled` setting).
+- [x] **Demo RPCs**: `demo_inject_alert`, `demo_toggle_elevator`, `demo_reset` (restore seed state). Guard them so they can't run in production (for example, check a `demo_enabled` setting).
 - [ ] **Full demo-zone graph** in `data/campus/*.geojson`: Library West, Marston, Turlington, CSE, and the paths between them. Tag every edge with stairs, slope, surface, indoor, `bike_ok`, and `elevator_id` where it rides an elevator. Walk the routes in person if you can. Slopes and broken curb cuts aren't on any map.
 - [x] **Graph checks in `import.ts`**: fail on orphan nodes, a disconnected graph, elevator nodes without edges, and duplicate IDs.
 - [ ] **Survey walk**: verify every `needs_survey` feature in person (see `data/campus/README.md`).
 
 ### M3: Study-ready
 
-- [ ] `demo_reset` reliably restores the same state between usability participants.
+- [x] `demo_reset` reliably restores the same state between usability participants.
 - [ ] Hosted project: run `supabase db push` with AGENT4.
 
 ## Tests (README → Testing)
