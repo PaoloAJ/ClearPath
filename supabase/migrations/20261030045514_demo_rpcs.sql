@@ -12,7 +12,7 @@ create table private.demo_sample_alerts (
   type           text not null,
   lat            float8 not null,
   lng            float8 not null,
-  radius_m       real not null,
+  radius_m       real not null check (radius_m > 0),
   minutes_ago    int not null check (minutes_ago >= 0),
   confirmations  int not null default 0 check (confirmations >= 0),
   verified       boolean not null default false
@@ -24,6 +24,9 @@ create table private.demo_sample_elevators (
   verified              boolean not null,
   reported_minutes_ago  int not null check (reported_minutes_ago >= 0)
 );
+
+alter table private.demo_sample_alerts enable row level security;
+alter table private.demo_sample_elevators enable row level security;
 
 create function private.require_demo()
 returns void
