@@ -2,8 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"math"
 	"net/http"
 
+	"clearpath/routing/internal/planner"
 	"clearpath/routing/internal/profiles"
 )
 
@@ -18,15 +23,57 @@ func (s *server) routes(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	if _, err := profiles.Parse(req.Profile); err != nil {
+	mode, err := profiles.Parse(req.Profile)
+	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// TODO(routing): snap From/To with graph.Nearest, run ShortestPath with the profile's
-	// CostFunc and barriers.Current().Blocked, then rerun with relaxed Options to build
-	// flagged alternatives. Rank, label the best fit "For you", and explain each difference in Notes.
-	writeError(w, http.StatusNotImplemented, "route search not implemented yet")
+	// TODO(routing): pass barriers.Current().Blocked and build flagged alternatives (M2).
+	planned, err := planner.Plan(s.graphs.Current(), planner.Request{
+		From: planner.Point{Lat: req.From.Lat, Lng: req.From.Lng},
+		To:   planner.Point{Lat: req.To.Lat, Lng: req.To.Lng},
+		Mode: mode,
+	})
+	switch {
+	case errors.Is(err, planner.ErrOutsideZone):
+		writeError(w, http.StatusUnprocessableEntity, "start or destination is outside the demo zone")
+		return
+	case errors.Is(err, planner.ErrNoRoute):
+		writeError(w, http.StatusUnprocessableEntity, "no route found between these points")
+		return
+	case err != nil:
+		slog.Error("route search failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "could not plan route")
+		return
+	}
+
+	resp := RouteResponse{Routes: make([]Route, 0, len(planned))}
+	for i, p := range planned {
+		resp.Routes = append(resp.Routes, toWire(i, p))
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func toWire(i int, p planner.Route) Route {
+	edges := p.Path.EdgeIDs
+	if edges == nil {
+		edges = []int64{}
+	}
+	notes := p.Notes
+	if notes == nil {
+		notes = []string{}
+	}
+	return Route{
+		ID:          fmt.Sprintf("r%d", i+1),
+		Label:       p.Label,
+		FitsProfile: p.FitsProfile,
+		DistanceM:   math.Round(p.DistanceM),
+		DurationS:   math.Round(p.DurationS),
+		Geometry:    LineString{Type: "LineString", Coordinates: p.Coords},
+		EdgeIDs:     edges,
+		Notes:       notes,
+	}
 }
 
 // POST /v1/routes/check
