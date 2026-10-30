@@ -36,8 +36,10 @@ export function CampusMap({ store, simulated = false }: { store: AlertStore; sim
   }, []);
 
   const visible = activeAlerts(alerts, now);
+  const groups = [true, false].map((verified) => ({ verified, items: visible.filter((alert) => alert.verified === verified) }));
   const focused = visible.find((alert) => alert.id === selected);
-  function refresh() { setLoading(true); setError(false); setAlerts([]); setSelected(null); setRevision((value) => value + 1); }
+  // Keep the alerts already on screen, so a failed refresh doesn't empty the map.
+  function refresh() { setLoading(true); setError(false); setSelected(null); setRevision((value) => value + 1); }
 
   return <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
     <Text accessibilityRole="header" style={styles.title}>Campus map</Text>
@@ -65,10 +67,10 @@ export function CampusMap({ store, simulated = false }: { store: AlertStore; sim
       </View>}
     </>}
     {list && !loading && !error && <>
-      {[true, false].map((verified) => <View key={String(verified)} style={styles.group}>
+      {groups.map(({ verified, items }) => <View key={String(verified)} style={styles.group}>
         <Text accessibilityRole="header" style={styles.heading}>{verified ? 'Facilities verified' : 'Student reports · Unverified'}</Text>
-        {visible.filter((alert) => alert.verified === verified).length === 0 && <Text style={styles.text}>No active alerts in this section.</Text>}
-        {visible.filter((alert) => alert.verified === verified).map((alert) => <View key={alert.id} style={styles.card}>
+        {items.length === 0 && <Text style={styles.text}>No active alerts in this section.</Text>}
+        {items.map((alert) => <View key={alert.id} style={styles.card}>
           <Text style={styles.heading}>{alertTypeLabel(alert.type)}</Text>
           <Text style={styles.text}>{describeAlert(alert, now)}</Text>
           <Text style={styles.text}>Location: {alert.lat.toFixed(4)}, {alert.lng.toFixed(4)}</Text>

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '@/components/BigButton';
 import { travelModes, type ProfileStore } from '@/lib/profile';
 import { colors, spacing } from '@/lib/theme';
-import { effectiveMode, type Profile, type TravelMode } from '@/lib/types';
+import type { Profile, TravelMode } from '@/lib/types';
 
 export function TravelProfile({ store, simulated = false }: { store: ProfileStore; simulated?: boolean }) {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -28,7 +28,8 @@ export function TravelProfile({ store, simulated = false }: { store: ProfileStor
     store.load().then((saved) => {
       if (!active) return;
       setProfile(saved);
-      setMode(saved?.mode ?? null);
+      // Keep a pick the user hasn't saved yet if the profile reloads.
+      setMode((current) => current ?? saved?.mode ?? null);
       setLoaded(true);
     }).catch(() => {
       if (active) setError('Could not load your travel profile. Try again.');
@@ -37,7 +38,8 @@ export function TravelProfile({ store, simulated = false }: { store: ProfileStor
   }, [store, attempt]);
 
   useEffect(() => {
-    if (message || error) AccessibilityInfo.announceForAccessibility(error || message);
+    // Android already reads the live region below, so only iOS needs the announcement.
+    if (Platform.OS === 'ios' && (message || error)) AccessibilityInfo.announceForAccessibility(error || message);
   }, [message, error]);
 
   async function save() {
@@ -74,7 +76,7 @@ export function TravelProfile({ store, simulated = false }: { store: ProfileStor
             variant={mode === option.mode ? 'primary' : 'secondary'} disabled={saving}
             onPress={() => { setMode(option.mode); setMessage(''); setError(''); }} />)}
         </View>
-        {profile && <Text style={styles.text}>Saved travel mode: {travelModes.find((item) => item.mode === effectiveMode(profile))?.label}</Text>}
+        {profile && <Text style={styles.text}>Saved travel mode: {travelModes.find((item) => item.mode === profile.mode)?.label}</Text>}
         <BigButton label={saving ? 'Saving…' : 'Save travel profile'} hint="Saves your selected travel mode"
           disabled={!mode || saving} accessibilityState={{ disabled: !mode || saving, busy: saving }} onPress={() => { void save(); }} />
         <Text style={styles.text}>Temporary travel modes and navigation preferences are coming next.</Text>
