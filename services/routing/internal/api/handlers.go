@@ -29,11 +29,12 @@ func (s *server) routes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO(routing): pass barriers.Current().Blocked and build flagged alternatives (M2).
+	// TODO(routing): build flagged alternatives with notes (M2).
 	planned, err := planner.Plan(s.graphs.Current(), planner.Request{
-		From: planner.Point{Lat: req.From.Lat, Lng: req.From.Lng},
-		To:   planner.Point{Lat: req.To.Lat, Lng: req.To.Lng},
-		Mode: mode,
+		From:    planner.Point{Lat: req.From.Lat, Lng: req.From.Lng},
+		To:      planner.Point{Lat: req.To.Lat, Lng: req.To.Lng},
+		Mode:    mode,
+		Blocked: s.barriers.Current().Blocked,
 	})
 	switch {
 	case errors.Is(err, planner.ErrOutsideZone):

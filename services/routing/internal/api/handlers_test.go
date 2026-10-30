@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -21,10 +22,16 @@ func (f fakeGraphs) Current() *graph.Graph {
 	return f.g
 }
 
-type fakeBarriers struct{ blocked []int64 }
+type fakeBarriers struct {
+	snap    *barriers.Snapshot
+	blocked []int64
+}
 
 func (f fakeBarriers) Current() *barriers.Snapshot {
-	return &barriers.Snapshot{Blocked: map[int64]bool{}}
+	if f.snap == nil {
+		return &barriers.Snapshot{Blocked: map[int64]bool{}}
+	}
+	return f.snap
 }
 
 func (f fakeBarriers) EdgesBlockedByAlert(context.Context, string, []int64) ([]int64, error) {
@@ -82,7 +89,12 @@ func line() *graph.Graph {
 
 func postRoutes(t *testing.T, g *graph.Graph, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	h := NewRouter(fakeGraphs{g: g}, fakeBarriers{}, noAuth)
+	return postRoutesWith(t, g, fakeBarriers{}, body)
+}
+
+func postRoutesWith(t *testing.T, g *graph.Graph, b fakeBarriers, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	h := NewRouter(fakeGraphs{g: g}, b, noAuth)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/routes", strings.NewReader(body)))
 	return rec
@@ -149,6 +161,36 @@ func TestRoutesErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if rec := postRoutes(t, tt.g, tt.body); rec.Code != tt.want {
 				t.Fatalf("status = %d, want %d (body %s)", rec.Code, tt.want, rec.Body)
+			}
+		})
+	}
+}
+
+func TestRoutesAvoidBlockedEdges(t *testing.T) {
+	// Add a shortcut from 1 to 3, then block it with a live barrier.
+	g := line()
+	edges := []graph.Edge{g.Edges[1], g.Edges[2], {ID: 9, Source: 1, Target: 3, LengthM: 150,
+		Surface: graph.SurfacePaved, BikeOK: true, Coords: [][2]float64{{-82.3430, 29.6500}, {-82.3430, 29.6480}}}}
+	nodes := []graph.Node{g.Nodes[1], g.Nodes[2], g.Nodes[3]}
+	g = graph.New(nodes, edges)
+	body := `{"from":{"lat":29.65,"lng":-82.343},"to":{"lat":29.648,"lng":-82.343},"profile":"walking"}`
+
+	for _, tt := range []struct {
+		name    string
+		blocked map[int64]bool
+		want    []int64
+	}{
+		{"takes the shortcut when clear", nil, []int64{9}},
+		{"goes around when blocked", map[int64]bool{9: true}, []int64{1, 2}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := postRoutesWith(t, g, fakeBarriers{snap: &barriers.Snapshot{Blocked: tt.blocked}}, body)
+			var resp RouteResponse
+			if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || len(resp.Routes) == 0 {
+				t.Fatalf("status %d, body %s", rec.Code, rec.Body)
+			}
+			if got := resp.Routes[0].EdgeIDs; !slices.Equal(got, tt.want) {
+				t.Fatalf("edge_ids = %v, want %v", got, tt.want)
 			}
 		})
 	}
