@@ -1,48 +1,153 @@
 import { useSignIn } from '@clerk/expo/legacy';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { BigButton } from '@/components/BigButton';
-import { colors, spacing } from '@/lib/theme';
+import { FormError } from '@/components/FormError';
+import { firstClerkErrorMessage } from '@/lib/clerkError';
+import { authStyles } from '@/lib/authStyles';
+
+type Stage = 'identify' | 'verify';
+
+/** What Clerk needs next, in words a user can act on (none of these are dead ends). */
+function describeStatus(status: string | null): string {
+  switch (status) {
+    case 'needs_second_factor':
+      return 'This account needs a second verification step that this app does not support yet. Contact support.';
+    case 'needs_new_password':
+      return 'Your password needs to be reset. Use the web app to reset it, then try again.';
+    case 'needs_client_trust':
+      return "We don't recognize this device. Check your email for a verification link, then try again.";
+    default:
+      return 'Could not complete sign-in. Please try again.';
+  }
+}
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
+  const [stage, setStage] = useState<Stage>('identify');
+  const [emailAddressId, setEmailAddressId] = useState<string | null>(null);
   const [emailAddress, setEmailAddress] = useState('');
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function onSubmit() {
+  async function onSubmitIdentifier() {
     if (!isLoaded || submitting) return;
     setError(null);
     setSubmitting(true);
     try {
-      const attempt = await signIn.create({ identifier: emailAddress, password });
-      if (attempt.status === 'complete') {
-        await setActive({ session: attempt.createdSessionId });
-        router.replace('/');
-      } else {
-        setError('Could not complete sign-in. Please try again.');
+      const attempt = await signIn.create({ identifier: emailAddress.trim() });
+      const emailFactor = attempt.supportedFirstFactors?.find(
+        (factor): factor is typeof factor & { emailAddressId: string } =>
+          factor.strategy === 'email_code' && 'emailAddressId' in factor,
+      );
+      if (!emailFactor) {
+        setError('Email code sign-in is not available for this account.');
+        return;
       }
+      await signIn.prepareFirstFactor({ strategy: 'email_code', emailAddressId: emailFactor.emailAddressId });
+      setEmailAddressId(emailFactor.emailAddressId);
+      setStage('verify');
     } catch (err) {
-      setError(firstClerkError(err) ?? 'Sign-in failed. Check your email and password.');
+      setError(firstClerkErrorMessage(err) ?? 'Could not find that account.');
     } finally {
       setSubmitting(false);
     }
   }
 
+  async function onVerify() {
+    if (!isLoaded || submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const attempt = await signIn.attemptFirstFactor({ strategy: 'email_code', code: code.trim() });
+      if (attempt.status === 'complete' && attempt.createdSessionId) {
+        await setActive({ session: attempt.createdSessionId });
+        router.replace('/');
+        return;
+      }
+      setError(describeStatus(attempt.status));
+    } catch (err) {
+      setError(firstClerkErrorMessage(err) ?? 'That code did not work. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onResend() {
+    if (!isLoaded || submitting || !emailAddressId) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await signIn.prepareFirstFactor({ strategy: 'email_code', emailAddressId });
+    } catch (err) {
+      setError(firstClerkErrorMessage(err) ?? 'Could not resend the code. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function onEditEmail() {
+    setStage('identify');
+    setCode('');
+    setError(null);
+  }
+
+  if (stage === 'verify') {
+    return (
+      <View style={authStyles.container}>
+        <Text accessibilityRole="header" style={authStyles.title}>
+          Check your email
+        </Text>
+        <Text style={authStyles.body}>We sent a code to {emailAddress}.</Text>
+
+        <View style={authStyles.field}>
+          <Text style={authStyles.label}>Verification code</Text>
+          <TextInput
+            style={authStyles.input}
+            value={code}
+            onChangeText={setCode}
+            keyboardType="number-pad"
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
+            accessibilityLabel="Verification code"
+          />
+        </View>
+
+        <FormError message={error} />
+
+        <BigButton label={submitting ? 'Signing in…' : 'Sign in'} onPress={onVerify} disabled={submitting} />
+        <BigButton
+          label="Resend code"
+          variant="secondary"
+          onPress={onResend}
+          disabled={submitting}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Use a different email"
+          onPress={onEditEmail}
+          style={authStyles.link}
+        >
+          <Text style={authStyles.linkText}>Use a different email</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>
+    <View style={authStyles.container}>
+      <Text accessibilityRole="header" style={authStyles.title}>
         Sign in
       </Text>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Email</Text>
+      <View style={authStyles.field}>
+        <Text style={authStyles.label}>Email</Text>
         <TextInput
-          style={styles.input}
+          style={authStyles.input}
           value={emailAddress}
           onChangeText={setEmailAddress}
           autoCapitalize="none"
@@ -53,61 +158,17 @@ export default function SignInScreen() {
         />
       </View>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="password"
-          textContentType="password"
-          accessibilityLabel="Password"
-        />
-      </View>
-
-      {error && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      )}
+      <FormError message={error} />
 
       <BigButton
-        label={submitting ? 'Signing in…' : 'Sign in'}
-        onPress={onSubmit}
+        label={submitting ? 'Sending code…' : 'Continue'}
+        onPress={onSubmitIdentifier}
         disabled={submitting}
       />
 
-      <Link href="/sign-up" style={styles.link}>
-        <Text style={styles.linkText}>Need an account? Create one</Text>
+      <Link href="/sign-up" style={authStyles.link}>
+        <Text style={authStyles.linkText}>Need an account? Create one</Text>
       </Link>
     </View>
   );
 }
-
-function firstClerkError(err: unknown): string | undefined {
-  if (err && typeof err === 'object' && 'errors' in err) {
-    const errors = (err as { errors?: { message?: string }[] }).errors;
-    return errors?.[0]?.message;
-  }
-  return undefined;
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.lg, gap: spacing.md, backgroundColor: colors.background },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text },
-  field: { gap: spacing.xs },
-  label: { fontSize: 16, fontWeight: '600', color: colors.text },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: spacing.sm,
-    fontSize: 16,
-    color: colors.text,
-  },
-  error: { fontSize: 16, fontWeight: '600', color: colors.statusOut },
-  link: { marginTop: spacing.sm, minHeight: 48, justifyContent: 'center' },
-  linkText: { fontSize: 16, color: colors.primary, fontWeight: '600' },
-});
