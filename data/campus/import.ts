@@ -167,8 +167,9 @@ function check() {
 
   const lngs = nodes.features.map((n) => n.geometry.coordinates[0]);
   const lats = nodes.features.map((n) => n.geometry.coordinates[1]);
-  const inZone = (lat: number, lng: number) =>
-    lat >= Math.min(...lats) && lat <= Math.max(...lats) && lng >= Math.min(...lngs) && lng <= Math.max(...lngs);
+  const [minLat, maxLat, minLng, maxLng] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  const inZone = (lat: number, lng: number) => lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+  const wholeMinutes = (n: unknown) => Number.isInteger(n) && (n as number) >= 0;
 
   for (const e of samples.elevators) {
     if (!elevatorIds.has(e.elevator_id)) errors.push(`samples: elevator ${e.elevator_id} has no elevator node`);
@@ -181,8 +182,13 @@ function check() {
     alertIds.add(a.id);
     if (!ALERT_TYPES.has(a.type)) errors.push(`samples: alert ${a.id} has unknown type ${JSON.stringify(a.type)}`);
     if (!inZone(a.lat, a.lng)) errors.push(`samples: alert ${a.id} is outside the demo zone`);
-    if (!a.verified && a.minutes_ago >= ALERT_TTL_MINUTES) {
-      errors.push(`samples: alert ${a.id} would already be expired (${a.minutes_ago} min old, unverified)`);
+    if (!wholeMinutes(a.minutes_ago) || !wholeMinutes(a.confirmations)) {
+      errors.push(`samples: alert ${a.id} needs whole, non-negative minutes_ago and confirmations`);
+    }
+    if (!(a.radius_m > 0)) errors.push(`samples: alert ${a.id} needs radius_m above 0`);
+    // Same rule render() uses for expiry: 4 h after the last report or confirmation.
+    if (!a.verified && lastActivityMinutes(a) >= ALERT_TTL_MINUTES) {
+      errors.push(`samples: alert ${a.id} would already be expired (last activity ${lastActivityMinutes(a)} min ago, unverified)`);
     }
   }
 
@@ -190,6 +196,11 @@ function check() {
     console.error(`campus graph has ${errors.length} problem(s):\n  ${errors.join('\n  ')}`);
     process.exit(1);
   }
+}
+
+// Confirmations are placed halfway between the report and now.
+function lastActivityMinutes(a: AlertSample): number {
+  return a.confirmations > 0 ? Math.floor(a.minutes_ago / 2) : a.minutes_ago;
 }
 
 function render(): string {
@@ -250,7 +261,7 @@ function render(): string {
   for (const a of samples.alerts) {
     if (a.note) out.push(`-- ${a.note}`);
     const createdAgo = a.minutes_ago;
-    const lastActivityAgo = a.confirmations > 0 ? Math.floor(createdAgo / 2) : createdAgo;
+    const lastActivityAgo = lastActivityMinutes(a);
     const expiresAt = a.verified
       ? `'infinity'`
       : `now() + interval '${ALERT_TTL_MINUTES - lastActivityAgo} minutes'`;
