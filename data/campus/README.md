@@ -34,6 +34,10 @@ Also worth checking on the walk:
 
 When you verify a feature, fix its fields and remove the flag from `needs_survey` (or the whole property when it's empty).
 
+## Sample demo state
+
+`samples.json` holds the elevator statuses and alerts that `make seed` loads on top of the graph: four alerts covering the trust states the app has to show (fresh with no confirmations, confirmed, older, and a verified Facilities post) and the Marston elevator as working and verified 20 minutes ago. Ages and expiry times are relative to when you run `make seed`, so reseed if local alerts have expired. Alert IDs are fixed (`00000000-0000-4000-8000-00000000000N`), so tests and demo scripts can refer to them.
+
 ## Editing
 
 Open the GeoJSON in [geojson.io](https://geojson.io) or QGIS. Each feature sits on its own line, so diffs stay readable. Keep that format when you save. `make seed` fails with a list of problems if an edit breaks the graph: duplicate IDs, unknown enum values, edge ends that don't sit on their nodes, orphan nodes, a disconnected graph, or elevator edges without an elevator.
