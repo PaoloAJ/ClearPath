@@ -4,8 +4,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { env } from '@/lib/env';
+import { previewEnabled } from '@/lib/preview';
+import { FrontendPreview } from '@/components/FrontendPreview';
 
 export default function RootLayout() {
+  if (previewEnabled) return <FrontendPreview />;
   return (
     <ClerkProvider publishableKey={env.clerkPublishableKey} tokenCache={tokenCache}>
       <StatusBar style="auto" />
