@@ -5,6 +5,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { BigButton } from '@/components/BigButton';
 import { FormError } from '@/components/FormError';
+import { FormStatus } from '@/components/FormStatus';
 import { firstClerkErrorMessage } from '@/lib/clerkError';
 import { authStyles } from '@/lib/authStyles';
 
@@ -32,6 +33,7 @@ export default function SignInScreen() {
   const [emailAddress, setEmailAddress] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmitIdentifier() {
@@ -61,6 +63,7 @@ export default function SignInScreen() {
   async function onVerify() {
     if (!isLoaded || submitting) return;
     setError(null);
+    setStatus(null);
     setSubmitting(true);
     try {
       const attempt = await signIn.attemptFirstFactor({ strategy: 'email_code', code: code.trim() });
@@ -80,9 +83,11 @@ export default function SignInScreen() {
   async function onResend() {
     if (!isLoaded || submitting || !emailAddressId) return;
     setError(null);
+    setStatus(null);
     setSubmitting(true);
     try {
       await signIn.prepareFirstFactor({ strategy: 'email_code', emailAddressId });
+      setStatus(`We sent a new code to ${emailAddress}.`);
     } catch (err) {
       setError(firstClerkErrorMessage(err) ?? 'Could not resend the code. Try again.');
     } finally {
@@ -94,6 +99,7 @@ export default function SignInScreen() {
     setStage('identify');
     setCode('');
     setError(null);
+    setStatus(null);
   }
 
   if (stage === 'verify') {
@@ -118,6 +124,7 @@ export default function SignInScreen() {
         </View>
 
         <FormError message={error} />
+        <FormStatus message={error ? null : status} />
 
         <BigButton label={submitting ? 'Signing in…' : 'Sign in'} onPress={onVerify} disabled={submitting} />
         <BigButton

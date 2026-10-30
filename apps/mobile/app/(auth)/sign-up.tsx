@@ -5,6 +5,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { BigButton } from '@/components/BigButton';
 import { FormError } from '@/components/FormError';
+import { FormStatus } from '@/components/FormStatus';
 import { firstClerkErrorMessage } from '@/lib/clerkError';
 import { authStyles } from '@/lib/authStyles';
 
@@ -18,6 +19,7 @@ export default function SignUpScreen() {
   const [emailAddress, setEmailAddress] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function finish(result: SignUpResult) {
@@ -53,6 +55,7 @@ export default function SignUpScreen() {
   async function onVerify() {
     if (!isLoaded || submitting) return;
     setError(null);
+    setStatus(null);
     setSubmitting(true);
     try {
       const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() });
@@ -67,9 +70,11 @@ export default function SignUpScreen() {
   async function onResend() {
     if (!isLoaded || submitting) return;
     setError(null);
+    setStatus(null);
     setSubmitting(true);
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setStatus(`We sent a new code to ${emailAddress}.`);
     } catch (err) {
       setError(firstClerkErrorMessage(err) ?? 'Could not resend the code. Try again.');
     } finally {
@@ -81,6 +86,7 @@ export default function SignUpScreen() {
     setStage('identify');
     setCode('');
     setError(null);
+    setStatus(null);
   }
 
   if (stage === 'verify') {
@@ -105,6 +111,7 @@ export default function SignUpScreen() {
         </View>
 
         <FormError message={error} />
+        <FormStatus message={error ? null : status} />
 
         <BigButton label={submitting ? 'Verifying…' : 'Verify'} onPress={onVerify} disabled={submitting} />
         <BigButton label="Resend code" variant="secondary" onPress={onResend} disabled={submitting} />
