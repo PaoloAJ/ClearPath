@@ -38,7 +38,7 @@ Plus the things that aren't in git: the Clerk application, the hosted Supabase p
 ### M0.5: Unblock everyone (do this first)
 
 - [ ] **Clerk app**: create it, enable email sign-in (optionally Google for UF accounts), add the session token claim `{"app_role": "{{user.public_metadata.role}}"}`, and activate the Supabase integration. Create one test student and one test `facilities` account.
-- [ ] **Clerk domain** in `supabase/config.toml` (`[auth.third_party.clerk] domain`) so local Supabase accepts Clerk tokens.
+- [ ] **Clerk domain** in `supabase/config.toml`: set `[auth.third_party.clerk] enabled = true` and the real `domain` together, so local Supabase accepts Clerk tokens. The CLI fetches the domain's OpenID config at startup, so a placeholder breaks `supabase start` and CI.
 - [ ] **Share keys** privately with the team: Clerk publishable + secret keys, the test accounts.
 - [ ] **GitHub**: push the repo, protect `main` (1 approving review, CI must pass), add PR template with an `R1`–`R6` line and an accessibility checkbox.
 - [ ] **CI green** on the first PR. Commit `pnpm-lock.yaml` and `go.sum`.
