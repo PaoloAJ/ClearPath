@@ -94,7 +94,9 @@ function demoRouteEdges(): Set<unknown> {
   for (const e of edges) {
     const length = lengthMeters(e.geometry.coordinates);
     for (const [a, b] of [[e.properties.source, e.properties.target], [e.properties.target, e.properties.source]]) {
-      adjacency.set(a, [...(adjacency.get(a) ?? []), { to: b, edge: e, length }]);
+      const list = adjacency.get(a);
+      if (list) list.push({ to: b, edge: e, length });
+      else adjacency.set(a, [{ to: b, edge: e, length }]);
     }
   }
   const starts = entrances.filter((n) => n.properties.building === 'Library West').map((n) => n.properties.id);
