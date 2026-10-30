@@ -3,7 +3,7 @@
 -- that Clerk would send (sub = Clerk user ID, app_role for facilities).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(18);
 
 create function pg_temp.act_as(user_id text, app_role text default null)
 returns void
@@ -69,32 +69,19 @@ select is(
 );
 
 -- alerts -----------------------------------------------------------------------
+-- Reports and votes go through RPCs (see trust_rpcs.test.sql). These tests cover direct
+-- table access, which must stay closed even for a modified client.
+
+reset role;
+insert into public.alerts (id, type, geom, created_by)
+values ('00000000-0000-0000-0000-00000000000a', 'construction', pg_temp.point_alert_geom(), 'user_a');
 
 select pg_temp.act_as('user_a');
 
-select lives_ok(
-  $$ insert into public.alerts (id, type, geom)
-     values ('00000000-0000-0000-0000-00000000000a', 'construction', pg_temp.point_alert_geom()) $$,
-  'a student can report an alert'
-);
-
 select throws_ok(
-  $$ insert into public.alerts (type, geom, verified) values ('construction', pg_temp.point_alert_geom(), true) $$,
+  $$ insert into public.alerts (type, geom) values ('construction', pg_temp.point_alert_geom()) $$,
   '42501', null,
-  'a student cannot post a verified alert'
-);
-
-select throws_ok(
-  $$ insert into public.alerts (type, geom, expires_at)
-     values ('construction', pg_temp.point_alert_geom(), now() + interval '1 day') $$,
-  '42501', null,
-  'a student cannot post an alert that outlives the 4-hour expiry'
-);
-
-select throws_ok(
-  $$ insert into public.alerts (type, geom, created_by) values ('construction', pg_temp.point_alert_geom(), 'user_b') $$,
-  '42501', null,
-  'a student cannot report an alert as someone else'
+  'students cannot insert alerts directly (report_alert only)'
 );
 
 update public.alerts set verified = true where id = '00000000-0000-0000-0000-00000000000a';
@@ -108,10 +95,11 @@ select is(
 
 select pg_temp.act_as('facilities_1', 'facilities');
 
-select lives_ok(
+select throws_ok(
   $$ insert into public.alerts (type, geom, verified, expires_at)
-     values ('elevator_out', pg_temp.point_alert_geom(), true, 'infinity') $$,
-  'facilities can post a verified alert with no expiry'
+     values ('construction', pg_temp.point_alert_geom(), true, 'infinity') $$,
+  '42501', null,
+  'facilities cannot insert alerts directly either (report_alert only)'
 );
 
 update public.alerts set verified = true where id = '00000000-0000-0000-0000-00000000000a';
@@ -125,32 +113,24 @@ select is(
 
 -- alert_votes ------------------------------------------------------------------
 
+insert into public.alert_votes (alert_id, user_id, kind)
+values ('00000000-0000-0000-0000-00000000000a', 'user_a', 'still_there');
+
 select pg_temp.act_as('user_a');
 
-select lives_ok(
-  $$ insert into public.alert_votes (alert_id, kind) values ('00000000-0000-0000-0000-00000000000a', 'still_there') $$,
-  'a user can vote on an alert'
+select throws_ok(
+  $$ insert into public.alert_votes (alert_id, kind) values ('00000000-0000-0000-0000-00000000000a', 'cleared') $$,
+  '42501', null,
+  'clients cannot insert votes directly (vote_alert only)'
 );
 
 select pg_temp.act_as('user_b');
 
 select throws_ok(
-  $$ insert into public.alert_votes (alert_id, user_id, kind)
-     values ('00000000-0000-0000-0000-00000000000a', 'user_c', 'cleared') $$,
+  $$ update public.alert_votes set kind = 'cleared' where user_id = 'user_a' $$,
   '42501', null,
-  'a user cannot vote as someone else'
+  'clients cannot change votes directly'
 );
-
-update public.alert_votes set kind = 'cleared' where user_id = 'user_a';
-
-reset role;
-select is(
-  (select kind from public.alert_votes where user_id = 'user_a'),
-  'still_there',
-  'a user cannot change someone else''s vote'
-);
-
-select pg_temp.act_as('user_b');
 
 select is(
   (select confirmations from public.alerts_feed where id = '00000000-0000-0000-0000-00000000000a'),

@@ -350,8 +350,8 @@ alert_votes
 **Row Level Security, at a glance**
 
 - `profiles`: users can read and write only their own row.
-- `alerts`: any signed-in user can read and insert. Only a `facilities` role can set `verified = true`.
-- `alert_votes`: users can insert and update only their own vote.
+- `alerts`: any signed-in user can read. Reports go through `report_alert()`, never a direct insert. Only a `facilities` role can set `verified = true`.
+- `alert_votes`: votes go through `vote_alert()`, one per user per alert.
 - `elevators`: readable by everyone. Status changes go through a function that logs the reporter to `elevator_reports`.
 - `nodes` and `edges`: read-only for clients, written only by migrations and seed.
 
@@ -438,7 +438,7 @@ To produce routes that don't fit the profile, the service runs the search again 
 
 ## Alerts and trust
 
-Rules for R4 and R5. All of them are configurable.
+Rules for R4 and R5. All of them are configurable in `private.app_settings`, and they're enforced in the database by `report_alert()` and `vote_alert()`.
 
 | Event | Effect |
 |---|---|
