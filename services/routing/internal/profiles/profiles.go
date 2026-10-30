@@ -50,7 +50,34 @@ type Options struct {
 //	walking      shortest
 func CostFunc(mode Mode, opts Options) graph.CostFunc {
 	// TODO(routing): implement the per-mode rules above. Walking is plain length for now.
-	return func(e graph.Edge) (float64, bool) {
+	return func(e graph.Edge, _ bool) (float64, bool) {
 		return e.LengthM, true
 	}
+}
+
+// Travel speeds in meters per second, used for duration_s.
+const (
+	WalkingSpeedMps    = 1.3
+	WalkingAidSpeedMps = 0.9
+	WheelchairSpeedMps = 1.1
+	BikeSpeedMps       = 4.5
+	ScooterSpeedMps    = 4.0
+	SkateboardSpeedMps = 3.0
+)
+
+// Speed returns the typical travel speed for mode in meters per second.
+func Speed(mode Mode) float64 {
+	switch mode {
+	case Wheelchair:
+		return WheelchairSpeedMps
+	case WalkingAid:
+		return WalkingAidSpeedMps
+	case Bike:
+		return BikeSpeedMps
+	case Scooter:
+		return ScooterSpeedMps
+	case Skateboard:
+		return SkateboardSpeedMps
+	}
+	return WalkingSpeedMps
 }
