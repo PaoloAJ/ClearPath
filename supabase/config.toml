@@ -358,10 +358,12 @@ enabled = false
 
 # Use Clerk as a third-party provider alongside Supabase Auth.
 # ClearPath: Clerk is the only identity provider (README → Getting started → 2. Set up Clerk).
-# Replace the domain with your Clerk Frontend API domain, e.g. "your-app-00.clerk.accounts.dev".
+# Disabled until the real Clerk Frontend API domain is filled in: when enabled, the CLI fetches
+# https://<domain>/.well-known/openid-configuration at startup and refuses to start (locally and
+# in CI) if that fails. Set enabled = true and the domain together.
 [auth.third_party.clerk]
-enabled = true
-domain = "<your-clerk-frontend-api-domain>"
+enabled = false
+# domain = "your-app-00.clerk.accounts.dev"
 
 # OAuth server configuration
 [auth.oauth_server]

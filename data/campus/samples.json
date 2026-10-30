@@ -1,0 +1,48 @@
+{
+  "elevators": [
+    { "elevator_id": 1, "status": "working", "verified": true, "reported_minutes_ago": 20 }
+  ],
+  "alerts": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "type": "construction",
+      "lat": 29.6488393,
+      "lng": -82.343574,
+      "radius_m": 15,
+      "minutes_ago": 45,
+      "confirmations": 3,
+      "note": "Path by Century Tower, toward Turlington"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "type": "blocked_path",
+      "lat": 29.6480365,
+      "lng": -82.3448772,
+      "radius_m": 10,
+      "minutes_ago": 0,
+      "confirmations": 0,
+      "note": "West side of CSE. Shows as 'Just now, no confirmations yet'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "type": "flooding",
+      "lat": 29.6505359,
+      "lng": -82.3432044,
+      "radius_m": 12,
+      "minutes_ago": 150,
+      "confirmations": 1,
+      "note": "South of Library West. Older report with one confirmation"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "type": "construction",
+      "lat": 29.6475945,
+      "lng": -82.3435839,
+      "radius_m": 20,
+      "minutes_ago": 1440,
+      "confirmations": 0,
+      "verified": true,
+      "note": "South of Marston. Facilities post: verified, no expiry"
+    }
+  ]
+}
