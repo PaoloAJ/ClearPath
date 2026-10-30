@@ -4,6 +4,7 @@ package profiles
 
 import (
 	"fmt"
+	"math"
 
 	"clearpath/routing/internal/graph"
 )
@@ -32,9 +33,21 @@ func (m Mode) IsRider() bool {
 }
 
 const (
-	WheelchairMaxSlopePct     = 8.0 // excluded above this
+	WheelchairMaxSlopePct     = 8.0 // excluded above this, uphill or down
 	WheelchairPenaltySlopePct = 5.0 // penalized above this
 	WalkingAidPenaltySlopePct = 6.0
+)
+
+// Cost multipliers and fixed costs. A fixed cost is counted as extra meters.
+const (
+	WheelchairUphillFactor   = 3.0 // steep uphill is hard work
+	WheelchairDownhillFactor = 1.5 // steep downhill is harder to control
+	WheelchairRoughFactor    = 2.0 // brick, gravel, grass
+	WalkingAidStairsFactor   = 4.0
+	WalkingAidStairsExtraM   = 60.0 // every flight costs this much on top
+	WalkingAidUphillFactor   = 2.0
+	RiderBrickFactor         = 1.5
+	ElevatorExtraM           = 20.0 // time spent waiting for the elevator
 )
 
 // Options relax the profile to produce flagged alternatives (README → Routing).
@@ -49,10 +62,58 @@ type Options struct {
 //	riders       exclude indoor, stairs, bike_ok = false; penalize brick
 //	walking      shortest
 func CostFunc(mode Mode, opts Options) graph.CostFunc {
-	// TODO(routing): implement the per-mode rules above. Walking is plain length for now.
-	return func(e graph.Edge, _ bool) (float64, bool) {
-		return e.LengthM, true
+	switch {
+	case mode == Wheelchair:
+		return func(e graph.Edge, forward bool) (float64, bool) {
+			grade := e.Grade(forward)
+			if (e.Stairs && !opts.AllowStairs) || math.Abs(grade) > WheelchairMaxSlopePct {
+				return 0, false
+			}
+			c := e.LengthM
+			if grade > WheelchairPenaltySlopePct {
+				c *= WheelchairUphillFactor
+			} else if grade < -WheelchairPenaltySlopePct {
+				c *= WheelchairDownhillFactor
+			}
+			if e.Surface != graph.SurfacePaved {
+				c *= WheelchairRoughFactor
+			}
+			return c + elevatorExtra(e), true
+		}
+	case mode == WalkingAid:
+		// Distance is the base cost, so a stairs-free detour only wins when it's short.
+		return func(e graph.Edge, forward bool) (float64, bool) {
+			c := e.LengthM
+			if e.Stairs {
+				c = c*WalkingAidStairsFactor + WalkingAidStairsExtraM
+			}
+			if e.Grade(forward) > WalkingAidPenaltySlopePct {
+				c *= WalkingAidUphillFactor
+			}
+			return c + elevatorExtra(e), true
+		}
+	case mode.IsRider():
+		return func(e graph.Edge, _ bool) (float64, bool) {
+			if e.Indoor || !e.BikeOK || (e.Stairs && !opts.AllowStairs) {
+				return 0, false
+			}
+			c := e.LengthM
+			if e.Surface == graph.SurfaceBrick {
+				c *= RiderBrickFactor
+			}
+			return c, true
+		}
 	}
+	return func(e graph.Edge, _ bool) (float64, bool) {
+		return e.LengthM + elevatorExtra(e), true
+	}
+}
+
+func elevatorExtra(e graph.Edge) float64 {
+	if e.ElevatorID != nil {
+		return ElevatorExtraM
+	}
+	return 0
 }
 
 // Travel speeds in meters per second, used for duration_s.
