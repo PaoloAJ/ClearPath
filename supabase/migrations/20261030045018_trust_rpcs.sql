@@ -16,6 +16,8 @@ create table private.app_settings (
   report_max_distance_m     real not null default 100 check (report_max_distance_m > 0)
 );
 
+alter table private.app_settings enable row level security;
+
 insert into private.app_settings default values;
 
 create function private.settings()
@@ -107,6 +109,7 @@ declare
   cfg private.app_settings := private.settings();
   facilities boolean := public.is_facilities();
   target public.alerts;
+  previous text;
   cleared int;
 begin
   if vote_alert.kind is null or vote_alert.kind not in ('still_there', 'cleared') then
@@ -118,13 +121,17 @@ begin
     raise exception 'alert is not active' using errcode = 'P0002';
   end if;
 
+  select v.kind into previous from public.alert_votes v
+  where v.alert_id = vote_alert.alert_id and v.user_id = uid;
+
   insert into public.alert_votes (alert_id, user_id, kind)
   values (vote_alert.alert_id, uid, vote_alert.kind)
   on conflict on constraint alert_votes_pkey
   do update set kind = excluded.kind, created_at = now();
 
   if vote_alert.kind = 'still_there' then
-    if not target.verified then
+    -- Only a new confirmation extends the alert, so one user can't keep it alive alone.
+    if not target.verified and previous is distinct from 'still_there' then
       update public.alerts a set expires_at = now() + cfg.alert_ttl where a.id = vote_alert.alert_id;
     end if;
     return;
