@@ -127,8 +127,8 @@ select public.vote_alert(pg_temp.recall('student'), 'still_there');
 reset role;
 select is(
   (select expires_at from public.alerts where id = pg_temp.recall('student')),
-  now() + interval '1 hour',
-  'repeating "still there" from the same user does not extend the alert again'
+  now() + interval '4 hours',
+  'a repeat "still there" from the same user refreshes the expiry too (README → Alerts and trust)'
 );
 
 select pg_temp.act_as('user_b');
