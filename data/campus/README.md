@@ -17,7 +17,7 @@ The Marston elevator node and its two edges were added by hand. OSM has the elev
 
 ## What still needs a walk
 
-OSM is a starting point, not ground truth. Anything with `needs_survey` hasn't been checked in person:
+OSM is a starting point, not ground truth. Anything with `needs_survey` hasn't been checked in person. **[SURVEY.md](SURVEY.md)** is the printable checklist, with the items on the demo routes first. Rebuild it with `pnpm tsx data/campus/survey.ts` after clearing flags.
 
 | Flag | Meaning | Count |
 |---|---|---|

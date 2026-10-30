@@ -151,8 +151,8 @@ function check() {
   // Start from a node with edges, so one orphan doesn't make the whole graph look disconnected.
   const start = [...nodeById.keys()].find((id) => adjacency.has(id));
   if (start !== undefined) {
-    const seen = new Set([start]);
-    const queue = [start];
+    const seen = new Set<unknown>([start]);
+    const queue: unknown[] = [start];
     while (queue.length) {
       for (const next of adjacency.get(queue.pop()) ?? []) {
         if (!seen.has(next)) {

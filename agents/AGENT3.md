@@ -67,7 +67,7 @@ Helpers you should use in policies: `public.requesting_user_id()` (Clerk `sub`) 
 - [x] **Demo RPCs**: `demo_inject_alert`, `demo_toggle_elevator`, `demo_reset` (restore seed state). Guard them so they can't run in production (for example, check a `demo_enabled` setting).
 - [ ] **Full demo-zone graph** in `data/campus/*.geojson`: Library West, Marston, Turlington, CSE, and the paths between them. Tag every edge with stairs, slope, surface, indoor, `bike_ok`, and `elevator_id` where it rides an elevator. Walk the routes in person if you can. Slopes and broken curb cuts aren't on any map.
 - [x] **Graph checks in `import.ts`**: fail on orphan nodes, a disconnected graph, elevator nodes without edges, and duplicate IDs.
-- [ ] **Survey walk**: verify every `needs_survey` feature in person (see `data/campus/README.md`).
+- [ ] **Survey walk**: verify every `needs_survey` feature in person. Checklist: `data/campus/SURVEY.md` (demo-route items first).
 
 ### M3: Study-ready
 
