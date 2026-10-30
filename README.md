@@ -515,7 +515,7 @@ Production environment variables match the tables above, with hosted URLs and pr
 
 **v1, the demo zone (current)**
 
-- [ ] Hand-mapped graph for Library West, Marston, Turlington, CSE, and the paths between them
+- [ ] Graph for Library West, Marston, Turlington, CSE, and the paths between them (traced from OpenStreetMap, verified in person)
 - [ ] Clerk sign-in + travel profile
 - [ ] Alert map, alert detail, voting, expiry
 - [ ] Route options with "For you" and flagged alternatives
