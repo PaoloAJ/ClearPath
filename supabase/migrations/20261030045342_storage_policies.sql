@@ -4,7 +4,7 @@
 
 update storage.buckets
 set file_size_limit = 5 * 1024 * 1024,
-    allowed_mime_types = array['image/jpeg', 'image/png', 'image/heic', 'image/webp']
+    allowed_mime_types = array['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp']
 where id = 'report-photos';
 
 create policy "report-photos: upload to own folder" on storage.objects
