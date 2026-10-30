@@ -133,8 +133,8 @@ function check() {
 
   const [start] = nodeById.keys();
   if (start !== undefined) {
-    const seen = new Set([start]);
-    const queue = [start];
+    const seen = new Set<unknown>([start]);
+    const queue: unknown[] = [start];
     while (queue.length) {
       for (const next of adjacency.get(queue.pop()) ?? []) {
         if (!seen.has(next)) {
