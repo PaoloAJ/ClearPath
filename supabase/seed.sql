@@ -1345,3 +1345,19 @@ insert into public.edges (id, source, target, geom, length_m, slope_pct, stairs,
 insert into public.edges (id, source, target, geom, length_m, slope_pct, stairs, surface, indoor, bike_ok, elevator_id) values (772, 389, 558, 'SRID=4326;LINESTRING(-82.3435734 29.648288, -82.3439704 29.6482889)', 38.4, 0, false, 'paved', false, true, null);
 insert into public.edges (id, source, target, geom, length_m, slope_pct, stairs, surface, indoor, bike_ok, elevator_id) values (773, 119, 568, 'SRID=4326;LINESTRING(-82.3440896 29.6480754, -82.3440333 29.6479033)', 19.9, 0, false, 'paved', true, false, 1);
 insert into public.edges (id, source, target, geom, length_m, slope_pct, stairs, surface, indoor, bike_ok, elevator_id) values (774, 384, 568, 'SRID=4326;LINESTRING(-82.3442365 29.6479045, -82.3440333 29.6479033)', 19.6, 0, false, 'paved', true, false, 1);
+
+-- Sample demo state (samples.json)
+update public.elevators set status = 'working', verified = true, last_reported_at = now() - interval '20 minutes' where id = 1;
+insert into public.elevator_reports (elevator_id, status, reported_by, verified, created_at) values (1, 'working', 'seed_facilities', true, now() - interval '20 minutes');
+-- Path by Century Tower, toward Turlington
+insert into public.alerts (id, type, geom, created_by, verified, created_at, expires_at) values ('00000000-0000-4000-8000-000000000001', 'construction', extensions.st_buffer('SRID=4326;POINT(-82.343574 29.6488393)'::extensions.geography, 15), 'seed_student_1', false, now() - interval '45 minutes', now() + interval '218 minutes');
+insert into public.alert_votes (alert_id, user_id, kind, created_at) values ('00000000-0000-4000-8000-000000000001', 'seed_student_2', 'still_there', now() - interval '22 minutes');
+insert into public.alert_votes (alert_id, user_id, kind, created_at) values ('00000000-0000-4000-8000-000000000001', 'seed_student_3', 'still_there', now() - interval '22 minutes');
+insert into public.alert_votes (alert_id, user_id, kind, created_at) values ('00000000-0000-4000-8000-000000000001', 'seed_student_4', 'still_there', now() - interval '22 minutes');
+-- West side of CSE. Shows as 'Just now, no confirmations yet'
+insert into public.alerts (id, type, geom, created_by, verified, created_at, expires_at) values ('00000000-0000-4000-8000-000000000002', 'blocked_path', extensions.st_buffer('SRID=4326;POINT(-82.3448772 29.6480365)'::extensions.geography, 10), 'seed_student_1', false, now() - interval '0 minutes', now() + interval '240 minutes');
+-- South of Library West. Older report with one confirmation
+insert into public.alerts (id, type, geom, created_by, verified, created_at, expires_at) values ('00000000-0000-4000-8000-000000000003', 'flooding', extensions.st_buffer('SRID=4326;POINT(-82.3432044 29.6505359)'::extensions.geography, 12), 'seed_student_1', false, now() - interval '150 minutes', now() + interval '165 minutes');
+insert into public.alert_votes (alert_id, user_id, kind, created_at) values ('00000000-0000-4000-8000-000000000003', 'seed_student_2', 'still_there', now() - interval '75 minutes');
+-- South of Marston. Facilities post: verified, no expiry
+insert into public.alerts (id, type, geom, created_by, verified, created_at, expires_at) values ('00000000-0000-4000-8000-000000000004', 'construction', extensions.st_buffer('SRID=4326;POINT(-82.3435839 29.6475945)'::extensions.geography, 20), 'seed_facilities', true, now() - interval '1440 minutes', 'infinity');

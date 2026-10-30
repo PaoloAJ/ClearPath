@@ -55,7 +55,7 @@ Helpers you should use in policies: `public.requesting_user_id()` (Clerk `sub`) 
   - `alerts`: signed-in users select and insert. Only `is_facilities()` can set `verified = true`.
   - `alert_votes`: select all, insert / update only your own vote.
   - `elevators`: no direct client writes.
-- [ ] **Sample data**: a few elevators and sample alerts in the demo zone, emitted by `import.ts` into `seed.sql` (for example from a `data/campus/samples.json`). *Done when:* `make seed` gives AGENT1 something to draw.
+- [x] **Sample data**: a few elevators and sample alerts in the demo zone, emitted by `import.ts` into `seed.sql` (for example from a `data/campus/samples.json`). *Done when:* `make seed` gives AGENT1 something to draw.
 - [x] **Map the first real path**: Library West → Marston with at least one elevator and one stair alternative, so AGENT2 has a meaningful graph. *Traced from OpenStreetMap (decision 0002); `needs_survey` flags mark what still needs an in-person check.*
 
 ### M2: v1 features
