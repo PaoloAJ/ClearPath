@@ -7,6 +7,11 @@
 //   id, source, target: number, slope_pct: number (signed), stairs, indoor, bike_ok: boolean,
 //   surface: "paved" | "brick" | "gravel" | "grass", elevator_id?: number
 // length_m is computed here from the geometry.
+//
+// Ignored by the import, kept for provenance (see data/campus/README.md):
+//   osm_node / osm_way: the OpenStreetMap feature it was traced from
+//   osm_wheelchair: the OSM wheelchair tag on an entrance ("yes" | "limited" | "no")
+//   needs_survey: fields not yet checked in person, e.g. ["slope", "surface"]
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -18,6 +23,11 @@ type Feature<G> = { type: 'Feature'; properties: Props; geometry: G };
 type Collection<G> = { type: 'FeatureCollection'; features: Feature<G>[] };
 type Point = { type: 'Point'; coordinates: Position };
 type LineString = { type: 'LineString'; coordinates: Position[] };
+
+const NODE_KINDS = new Set(['entrance', 'junction', 'elevator']);
+const SURFACES = new Set(['paved', 'brick', 'gravel', 'grass']);
+// Edge ends must sit on their nodes. 1 m catches drawing mistakes without flagging rounding.
+const ENDPOINT_TOLERANCE_M = 1;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const seedPath = join(here, '../../supabase/seed.sql');
@@ -33,16 +43,104 @@ function read<G>(file: string): Collection<G> {
   return JSON.parse(readFileSync(join(here, file), 'utf8')) as Collection<G>;
 }
 
+/** Collects every graph problem, then fails once with the full list. */
 function check() {
-  const ids = new Set(nodes.features.map((f) => f.properties.id));
-  for (const e of edges.features) {
-    for (const end of ['source', 'target'] as const) {
-      if (!ids.has(e.properties[end])) {
-        throw new Error(`edge ${e.properties.id}: ${end} ${e.properties[end]} is not a node`);
+  const errors: string[] = [];
+  const nodeById = new Map<unknown, Feature<Point>>();
+  const elevatorIds = new Set<unknown>();
+  const elevatorNode = new Map<unknown, unknown>(); // elevator_id → node id
+
+  for (const n of nodes.features) {
+    const p = n.properties;
+    if (nodeById.has(p.id)) errors.push(`node ${p.id}: duplicate id`);
+    nodeById.set(p.id, n);
+    if (!NODE_KINDS.has(String(p.kind))) errors.push(`node ${p.id}: unknown kind ${JSON.stringify(p.kind)}`);
+    if (p.kind === 'elevator') {
+      if (p.elevator_id == null || !p.elevator_name || !p.building) {
+        errors.push(`node ${p.id}: elevator nodes need elevator_id, elevator_name, and building`);
+      }
+      if (p.elevator_id != null) {
+        if (elevatorIds.has(p.elevator_id)) errors.push(`node ${p.id}: duplicate elevator_id ${p.elevator_id}`);
+        elevatorIds.add(p.elevator_id);
+        elevatorNode.set(p.elevator_id, p.id);
       }
     }
   }
-  // TODO(data): fail on orphan nodes, a disconnected graph, and elevator nodes without edges.
+
+  const edgeIds = new Set<unknown>();
+  const adjacency = new Map<unknown, unknown[]>();
+  const link = (a: unknown, b: unknown) => {
+    const list = adjacency.get(a);
+    if (list) list.push(b);
+    else adjacency.set(a, [b]);
+  };
+
+  for (const e of edges.features) {
+    const p = e.properties;
+    if (edgeIds.has(p.id)) errors.push(`edge ${p.id}: duplicate id`);
+    edgeIds.add(p.id);
+    if (p.surface != null && !SURFACES.has(String(p.surface))) {
+      errors.push(`edge ${p.id}: unknown surface ${JSON.stringify(p.surface)}`);
+    }
+    for (const key of ['stairs', 'indoor', 'bike_ok'] as const) {
+      if (typeof p[key] !== 'boolean') errors.push(`edge ${p.id}: ${key} must be true or false, got ${JSON.stringify(p[key])}`);
+    }
+    if (typeof p.slope_pct !== 'number') errors.push(`edge ${p.id}: slope_pct must be a number`);
+    if (p.elevator_id != null) {
+      const at = elevatorNode.get(p.elevator_id);
+      if (at === undefined) {
+        errors.push(`edge ${p.id}: elevator_id ${p.elevator_id} has no elevator node`);
+      } else if (p.source !== at && p.target !== at) {
+        errors.push(`edge ${p.id}: elevator_id ${p.elevator_id} but doesn't touch elevator node ${at}`);
+      }
+    }
+
+    const coords = e.geometry.coordinates;
+    const ends = [
+      ['source', coords[0]],
+      ['target', coords[coords.length - 1]],
+    ] as const;
+    for (const [end, at] of ends) {
+      const node = nodeById.get(p[end]);
+      if (!node) {
+        errors.push(`edge ${p.id}: ${end} ${p[end]} is not a node`);
+      } else if (!at || haversine(at, node.geometry.coordinates) > ENDPOINT_TOLERANCE_M) {
+        errors.push(`edge ${p.id}: geometry doesn't start/end at its ${end} node ${p[end]}`);
+      }
+    }
+    link(p.source, p.target);
+    link(p.target, p.source);
+  }
+
+  for (const [id, n] of nodeById) {
+    if (!adjacency.has(id)) {
+      errors.push(`node ${id}: orphan (no edges)${n.properties.kind === 'elevator' ? ', elevator is unreachable' : ''}`);
+    }
+  }
+
+  // Start from a node with edges, so one orphan doesn't make the whole graph look disconnected.
+  const start = [...nodeById.keys()].find((id) => adjacency.has(id));
+  if (start !== undefined) {
+    const seen = new Set([start]);
+    const queue = [start];
+    while (queue.length) {
+      for (const next of adjacency.get(queue.pop()) ?? []) {
+        if (!seen.has(next)) {
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    const unreachable = [...nodeById.keys()].filter((id) => !seen.has(id) && adjacency.has(id));
+    if (unreachable.length) {
+      errors.push(`graph is disconnected: ${unreachable.length} nodes unreachable from node ${start} (e.g. ${unreachable.slice(0, 5).join(', ')})`);
+    }
+  }
+
+  if (errors.length) {
+    console.error(`campus graph has ${errors.length} problem(s):\n  ${errors.join('\n  ')}`);
+    process.exit(1);
+  }
 }
 
 function render(): string {
