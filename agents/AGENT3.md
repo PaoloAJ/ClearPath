@@ -72,7 +72,7 @@ Helpers you should use in policies: `public.requesting_user_id()` (Clerk `sub`) 
 ### M3: Study-ready
 
 - [x] `demo_reset` reliably restores the same state between usability participants.
-- [ ] Hosted project: run `supabase db push` with AGENT4.
+- [ ] Hosted project: run `supabase db push` with AGENT4. Steps in `supabase/README.md` → Hosted setup; verify with `supabase/scripts/smoke.mts`.
 
 ## Tests (README → Testing)
 
