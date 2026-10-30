@@ -59,14 +59,31 @@ func TestRoutesRejectsUnknownProfile(t *testing.T) {
 	}
 }
 
-func TestRoutesCheckReportsAffected(t *testing.T) {
-	h := NewRouter(fakeGraphs{}, fakeBarriers{blocked: []int64{48}}, noAuth)
-	body := `{"remaining_edge_ids":[47,48,52],"alert_id":"6f1c"}`
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/routes/check", strings.NewReader(body)))
-	want := `{"affected":true,"blocked_edge_ids":[48],"reroute_suggested":true}`
-	if got := strings.TrimSpace(rec.Body.String()); got != want {
-		t.Fatalf("body = %s, want %s", got, want)
+func TestRoutesCheck(t *testing.T) {
+	const id = "6f1c2a9e-3b4d-4c5e-8f90-1a2b3c4d5e6f"
+	tests := []struct {
+		name     string
+		blocked  []int64
+		body     string
+		wantCode int
+		wantBody string
+	}{
+		{"affected", []int64{48}, `{"remaining_edge_ids":[47,48,52],"alert_id":"` + id + `"}`,
+			http.StatusOK, `{"affected":true,"blocked_edge_ids":[48],"reroute_suggested":true}`},
+		{"not affected", nil, `{"remaining_edge_ids":[47],"alert_id":"` + id + `"}`,
+			http.StatusOK, `{"affected":false,"blocked_edge_ids":[],"reroute_suggested":false}`},
+		{"bad alert id", nil, `{"remaining_edge_ids":[47],"alert_id":"6f1c"}`,
+			http.StatusBadRequest, `{"error":"alert_id must be a UUID"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewRouter(fakeGraphs{}, fakeBarriers{blocked: tt.blocked}, noAuth)
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/routes/check", strings.NewReader(tt.body)))
+			if got := strings.TrimSpace(rec.Body.String()); rec.Code != tt.wantCode || got != tt.wantBody {
+				t.Fatalf("got %d %s, want %d %s", rec.Code, got, tt.wantCode, tt.wantBody)
+			}
+		})
 	}
 }
 

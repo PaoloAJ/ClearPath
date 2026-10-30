@@ -133,8 +133,28 @@ func (s *Store) loadElevators(ctx context.Context) (map[int64]Elevator, error) {
 	return elevators, rows.Err()
 }
 
-// EdgesBlockedByAlert returns the subset of edgeIDs that intersect one alert (for /v1/routes/check).
+// EdgesBlockedByAlert returns the edges in edgeIDs that touch one active alert, in the order given.
+// It's used by /v1/routes/check. A resolved, expired, or unknown alert blocks nothing.
 func (s *Store) EdgesBlockedByAlert(ctx context.Context, alertID string, edgeIDs []int64) ([]int64, error) {
-	// TODO(routing): query edges where id = any($2) and st_intersects with the alert's polygon.
-	return nil, nil
+	rows, err := s.pool.Query(ctx, `
+		select e.id from public.edges e
+		join public.alerts a on a.id = $1::uuid
+		where e.id = any($2)
+		  and st_intersects(e.geom, a.geom)
+		  and a.resolved_at is null and a.expires_at > now()
+		order by array_position($2, e.id)`, alertID, edgeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("check alert %s: %w", alertID, err)
+	}
+	defer rows.Close()
+
+	blocked := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		blocked = append(blocked, id)
+	}
+	return blocked, rows.Err()
 }
