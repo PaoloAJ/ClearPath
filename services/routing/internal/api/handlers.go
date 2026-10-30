@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"time"
 
 	"clearpath/routing/internal/planner"
 	"clearpath/routing/internal/profiles"
@@ -29,12 +30,12 @@ func (s *server) routes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO(routing): build flagged alternatives with notes (M2).
 	planned, err := planner.Plan(s.graphs.Current(), planner.Request{
-		From:    planner.Point{Lat: req.From.Lat, Lng: req.From.Lng},
-		To:      planner.Point{Lat: req.To.Lat, Lng: req.To.Lng},
-		Mode:    mode,
-		Blocked: s.barriers.Current().Blocked,
+		From:     planner.Point{Lat: req.From.Lat, Lng: req.From.Lng},
+		To:       planner.Point{Lat: req.To.Lat, Lng: req.To.Lng},
+		Mode:     mode,
+		Barriers: s.barriers.Current(),
+		Now:      time.Now(),
 	})
 	switch {
 	case errors.Is(err, planner.ErrOutsideZone):
