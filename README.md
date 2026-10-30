@@ -420,6 +420,8 @@ All endpoints except `/healthz` require `Authorization: Bearer <Clerk session to
 }
 ```
 
+Errors come back as `{ "error": "..." }`: `400` for a bad body, an unknown profile, or an `alert_id` that is not a UUID, and `422` when the start or destination is more than 1 km from the campus graph (outside the demo zone) or no route connects them.
+
 To produce routes that don't fit the profile, the service runs the search again with relaxed constraints (stairs allowed, barriers ignored) and explains each difference in `notes`. That's how the fastest route can still be shown with a warning (R3).
 
 **`POST /v1/routes/check`**: used during navigation (R2).
