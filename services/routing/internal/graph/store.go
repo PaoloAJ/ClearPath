@@ -50,7 +50,12 @@ func (s *Store) Reload(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.current.Store(New(nodes, edges))
+	g := New(nodes, edges)
+	// Still serve a graph with problems, since most routes will work, but say so loudly.
+	if err := g.Check(); err != nil {
+		slog.Warn("graph check failed", "err", err)
+	}
+	s.current.Store(g)
 	slog.Info("graph loaded", "nodes", len(nodes), "edges", len(edges))
 	return nil
 }

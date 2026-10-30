@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"strings"
+	"time"
 
 	"clearpath/routing/internal/planner"
 	"clearpath/routing/internal/profiles"
@@ -29,11 +31,12 @@ func (s *server) routes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO(routing): pass barriers.Current().Blocked and build flagged alternatives (M2).
 	planned, err := planner.Plan(s.graphs.Current(), planner.Request{
-		From: planner.Point{Lat: req.From.Lat, Lng: req.From.Lng},
-		To:   planner.Point{Lat: req.To.Lat, Lng: req.To.Lng},
-		Mode: mode,
+		From:     planner.Point{Lat: req.From.Lat, Lng: req.From.Lng},
+		To:       planner.Point{Lat: req.To.Lat, Lng: req.To.Lng},
+		Mode:     mode,
+		Barriers: s.barriers.Current(),
+		Now:      time.Now(),
 	})
 	switch {
 	case errors.Is(err, planner.ErrOutsideZone):
@@ -83,13 +86,14 @@ func (s *server) routesCheck(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	if req.AlertID == "" {
-		writeError(w, http.StatusBadRequest, "alert_id is required")
+	if !isUUID(req.AlertID) {
+		writeError(w, http.StatusBadRequest, "alert_id must be a UUID")
 		return
 	}
 
 	blocked, err := s.barriers.EdgesBlockedByAlert(r.Context(), req.AlertID, req.RemainingEdgeIDs)
 	if err != nil {
+		slog.Error("route check failed", "err", err)
 		writeError(w, http.StatusInternalServerError, "could not check alert")
 		return
 	}
@@ -101,6 +105,24 @@ func (s *server) routesCheck(w http.ResponseWriter, r *http.Request) {
 		BlockedEdgeIDs:   blocked,
 		RerouteSuggested: len(blocked) > 0,
 	})
+}
+
+// isUUID checks the 8-4-4-4-12 hex shape so a bad ID gets a 400 instead of a database error.
+func isUUID(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i, c := range s {
+		switch {
+		case i == 8 || i == 13 || i == 18 || i == 23:
+			if c != '-' {
+				return false
+			}
+		case !strings.ContainsRune("0123456789abcdefABCDEF", c):
+			return false
+		}
+	}
+	return true
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
