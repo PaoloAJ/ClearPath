@@ -88,7 +88,7 @@ Helpers you should use in policies: `public.requesting_user_id()` (Clerk `sub`) 
 
 - **Migrations are append-only.** Never edit a merged migration. Add a new timestamped file (`supabase migration new <name>`).
 - **Never hand-edit `seed.sql`.** It's generated. Edit GeoJSON and run `make seed`.
-- Every new table gets RLS enabled in the same migration.
+- Every new table gets RLS enabled **and explicit grants** in the same migration. API roles get no table access by default (see `20261030042627_rls_policies.sql`), so a table without grants is invisible to the app.
 - Trust logic (expiry, votes, verification) lives in the database, not the client, so a modified app can't skip it.
 - If you rename or drop a column, it's a contract change: README, AGENT1's `lib/types.ts`, and AGENT2's loaders change in the same PR.
 

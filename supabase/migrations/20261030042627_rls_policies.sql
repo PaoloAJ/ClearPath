@@ -4,10 +4,15 @@
 -- set_elevator_status(); votes and reports will also get RPCs, which run as definer.
 
 -- Grants ---------------------------------------------------------------------------
--- New tables aren't granted to the API roles automatically. Grants say which operations a
--- role may attempt at all; the policies below decide which rows. Anything not granted here
--- (deletes, writes to map data and elevators) is denied before RLS is even checked.
+-- Grants say which operations a role may attempt at all; the policies below decide which
+-- rows. Supabase versions differ on default grants (some give anon and authenticated
+-- everything, newer ones give nothing), so start from nothing and grant only what we mean.
+-- Anything not granted here (deletes, writes to map data and elevators) is denied before
+-- RLS is even checked.
 
+revoke all on all tables in schema public from anon, authenticated;
+-- Tables from later migrations start with no API access either. Grant them explicitly.
+alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;
 grant usage on schema public to anon, authenticated;
 
 grant select on public.nodes, public.edges, public.elevators to anon, authenticated;
