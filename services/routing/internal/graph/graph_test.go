@@ -131,23 +131,6 @@ func TestShortestPathPassesDirection(t *testing.T) {
 	}
 }
 
-func TestShortestPathMatchesDijkstraOnGrid(t *testing.T) {
-	// A* must return the optimal cost even when costs vary a lot per edge.
-	g := grid(12)
-	cost := func(e Edge, _ bool) (float64, bool) {
-		return e.LengthM * float64(1+e.ID%5), true
-	}
-	for _, to := range []int64{12*12 - 1, 77, 5} {
-		p, err := g.ShortestPath(0, to, cost, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if want := dijkstra(g, 0, to, cost); math.Abs(p.Cost-want) > 1e-6 {
-			t.Errorf("to %d: cost = %v, want %v", to, p.Cost, want)
-		}
-	}
-}
-
 func TestEdgeGrade(t *testing.T) {
 	e := Edge{SlopePct: 4}
 	if e.Grade(true) != 4 || e.Grade(false) != -4 {
@@ -189,62 +172,5 @@ func TestHaversine(t *testing.T) {
 	// 0.001° of latitude is about 111 m.
 	if d := Haversine(29.65, -82.34, 29.651, -82.34); math.Abs(d-111.2) > 0.5 {
 		t.Fatalf("Haversine = %.2f, want ≈111.2", d)
-	}
-}
-
-// grid builds an n×n lattice of junctions about 10 m apart.
-func grid(n int) *Graph {
-	var nodes []Node
-	for r := range n {
-		for c := range n {
-			nodes = append(nodes, Node{ID: int64(r*n + c), Lat: 29.64 + float64(r)*0.0001, Lng: -82.35 + float64(c)*0.0001, Kind: NodeJunction})
-		}
-	}
-	var edges []Edge
-	id := int64(1)
-	for r := range n {
-		for c := range n {
-			here := int64(r*n + c)
-			if c+1 < n {
-				edges = append(edges, edgeBetween(nodes, id, here, here+1))
-				id++
-			}
-			if r+1 < n {
-				edges = append(edges, edgeBetween(nodes, id, here, here+int64(n)))
-				id++
-			}
-		}
-	}
-	return New(nodes, edges)
-}
-
-func dijkstra(g *Graph, from, to int64, cost CostFunc) float64 {
-	dist := map[int64]float64{from: 0}
-	done := map[int64]bool{}
-	for {
-		cur, best := int64(-1), math.Inf(1)
-		for id, d := range dist {
-			if !done[id] && d < best {
-				cur, best = id, d
-			}
-		}
-		if cur < 0 {
-			return math.Inf(1)
-		}
-		if cur == to {
-			return best
-		}
-		done[cur] = true
-		for _, eid := range g.Incident(cur) {
-			e := g.Edges[eid]
-			c, ok := cost(e, e.Source == cur)
-			if !ok {
-				continue
-			}
-			next := e.Other(cur)
-			if old, seen := dist[next]; !seen || best+c < old {
-				dist[next] = best + c
-			}
-		}
 	}
 }

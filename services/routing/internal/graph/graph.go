@@ -105,8 +105,8 @@ type Path struct {
 	Cost    float64
 }
 
-// Nearest returns the entrance or junction closest to (lat, lng) and its distance in meters.
-// Elevator nodes are skipped: a trip starts at a door or on a path, not inside a shaft.
+// Nearest returns the entrance or junction closest to (lat, lng) and how far away it is in meters.
+// Elevators are skipped because a trip never starts inside one.
 func (g *Graph) Nearest(lat, lng float64) (Node, float64, bool) {
 	var best Node
 	bestD := math.Inf(1)
@@ -115,7 +115,7 @@ func (g *Graph) Nearest(lat, lng float64) (Node, float64, bool) {
 			continue
 		}
 		d := Haversine(lat, lng, n.Lat, n.Lng)
-		// Tie-break on ID so results don't depend on map order.
+		// Break ties by ID so the result is always the same.
 		if d < bestD || (d == bestD && n.ID < best.ID) {
 			best, bestD = n, d
 		}
@@ -133,8 +133,8 @@ func (g *Graph) ShortestPath(from, to int64, cost CostFunc, blocked map[int64]bo
 		return Path{}, ErrNoPath
 	}
 
-	// Straight-line distance times the cheapest cost per straight-line meter of any usable
-	// edge never overestimates, so the heuristic stays admissible for every cost function.
+	// Guess the cost left as straight-line distance times the cheapest cost per meter.
+	// The guess is never too high, so A* still finds the best path.
 	perMeter := g.minCostPerMeter(cost, blocked)
 	h := func(id int64) float64 {
 		n := g.Nodes[id]
@@ -231,7 +231,7 @@ func (g *Graph) minCostPerMeter(cost CostFunc, blocked map[int64]bool) float64 {
 		s, t := g.Nodes[e.Source], g.Nodes[e.Target]
 		straight := Haversine(s.Lat, s.Lng, t.Lat, t.Lng)
 		if straight < 1e-6 {
-			continue // vertical edges (elevators) cover no ground
+			continue // elevator rides go up, not across
 		}
 		for _, fwd := range []bool{true, false} {
 			if c, ok := cost(e, fwd); ok && c/straight < best {
@@ -262,7 +262,7 @@ type item struct {
 	f    float64
 }
 
-// frontier is a min-heap on f, tie-broken by node ID so paths are deterministic.
+// frontier hands back the node with the lowest f first, then the lowest ID.
 type frontier []item
 
 func (q frontier) Len() int { return len(q) }

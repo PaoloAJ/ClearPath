@@ -9,8 +9,8 @@ import (
 	"clearpath/routing/internal/profiles"
 )
 
-// MaxSnapDistanceM is how far a trip end may be from the nearest graph node.
-// Anything farther is outside the demo zone (README → Scope).
+// MaxSnapDistanceM is the farthest a start or end point can be from the map.
+// Anything farther is outside the demo zone.
 const MaxSnapDistanceM = 1000.0
 
 var (
