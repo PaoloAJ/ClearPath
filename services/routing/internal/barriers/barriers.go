@@ -3,6 +3,7 @@ package barriers
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync/atomic"
 	"time"
@@ -12,8 +13,25 @@ import (
 
 // Snapshot is the set of edges that routing must avoid right now.
 type Snapshot struct {
-	Blocked  map[int64]bool
-	LoadedAt time.Time
+	Blocked   map[int64]bool
+	Reasons   map[int64]Reason   // why each blocked edge is blocked
+	Elevators map[int64]Elevator // every elevator, for route notes
+	LoadedAt  time.Time
+}
+
+// Reason says why an edge is blocked: an alert of some type, or a broken elevator.
+type Reason struct {
+	AlertType  string
+	ElevatorID *int64
+}
+
+type Elevator struct {
+	ID             int64
+	Name           string // "Marston, east elevator"
+	Building       string
+	Status         string // working | out | unconfirmed
+	Verified       bool
+	LastReportedAt *time.Time
 }
 
 type Store struct {
@@ -23,7 +41,7 @@ type Store struct {
 
 func NewStore(pool *pgxpool.Pool) *Store {
 	s := &Store{pool: pool}
-	s.current.Store(&Snapshot{Blocked: map[int64]bool{}})
+	s.current.Store(&Snapshot{Blocked: map[int64]bool{}, Reasons: map[int64]Reason{}, Elevators: map[int64]Elevator{}})
 	return s
 }
 
@@ -48,36 +66,95 @@ func (s *Store) Run(ctx context.Context, every time.Duration) {
 
 // Refresh blocks every edge that intersects an active alert polygon or rides an elevator that is out.
 func (s *Store) Refresh(ctx context.Context) error {
+	blocked, reasons, err := s.loadBlocked(ctx)
+	if err != nil {
+		return fmt.Errorf("load blocked edges: %w", err)
+	}
+	elevators, err := s.loadElevators(ctx)
+	if err != nil {
+		return fmt.Errorf("load elevators: %w", err)
+	}
+	s.current.Store(&Snapshot{Blocked: blocked, Reasons: reasons, Elevators: elevators, LoadedAt: time.Now()})
+	return nil
+}
+
+func (s *Store) loadBlocked(ctx context.Context) (map[int64]bool, map[int64]Reason, error) {
 	rows, err := s.pool.Query(ctx, `
-		select e.id from edges e
-		join alerts a on st_intersects(e.geom, a.geom)
+		select e.id, a.type, null::bigint from public.edges e
+		join public.alerts a on st_intersects(e.geom, a.geom)
 		where a.resolved_at is null and a.expires_at > now()
-		union
-		select e.id from edges e
-		join elevators el on el.id = e.elevator_id
+		union all
+		select e.id, null, e.elevator_id from public.edges e
+		join public.elevators el on el.id = e.elevator_id
 		where el.status = 'out'`)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
 	blocked := map[int64]bool{}
+	reasons := map[int64]Reason{}
 	for rows.Next() {
 		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return err
+		var alertType *string
+		var r Reason
+		if err := rows.Scan(&id, &alertType, &r.ElevatorID); err != nil {
+			return nil, nil, err
+		}
+		if alertType != nil {
+			r.AlertType = *alertType
+		}
+		// One reason per edge is enough for a note; keep the first.
+		if !blocked[id] {
+			reasons[id] = r
 		}
 		blocked[id] = true
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	s.current.Store(&Snapshot{Blocked: blocked, LoadedAt: time.Now()})
-	return nil
+	return blocked, reasons, rows.Err()
 }
 
-// EdgesBlockedByAlert returns the subset of edgeIDs that intersect one alert (for /v1/routes/check).
+func (s *Store) loadElevators(ctx context.Context) (map[int64]Elevator, error) {
+	rows, err := s.pool.Query(ctx, `
+		select id, name, building, status, verified, last_reported_at
+		from public.elevators`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	elevators := map[int64]Elevator{}
+	for rows.Next() {
+		var el Elevator
+		if err := rows.Scan(&el.ID, &el.Name, &el.Building, &el.Status, &el.Verified, &el.LastReportedAt); err != nil {
+			return nil, err
+		}
+		elevators[el.ID] = el
+	}
+	return elevators, rows.Err()
+}
+
+// EdgesBlockedByAlert returns the edges in edgeIDs that touch one active alert, in the order given.
+// It's used by /v1/routes/check. A resolved, expired, or unknown alert blocks nothing.
 func (s *Store) EdgesBlockedByAlert(ctx context.Context, alertID string, edgeIDs []int64) ([]int64, error) {
-	// TODO(routing): query edges where id = any($2) and st_intersects with the alert's polygon.
-	return nil, nil
+	rows, err := s.pool.Query(ctx, `
+		select e.id from public.edges e
+		join public.alerts a on a.id = $1::uuid
+		where e.id = any($2)
+		  and st_intersects(e.geom, a.geom)
+		  and a.resolved_at is null and a.expires_at > now()
+		order by array_position($2, e.id)`, alertID, edgeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("check alert %s: %w", alertID, err)
+	}
+	defer rows.Close()
+
+	blocked := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		blocked = append(blocked, id)
+	}
+	return blocked, rows.Err()
 }
