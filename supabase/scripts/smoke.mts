@@ -1,8 +1,8 @@
 // API smoke test: calls the database the way the app does (PostgREST + Storage over HTTP) and
-// checks the contracts in AGENTS.md → Contracts. See supabase/README.md → Smoke test.
+// checks the contracts in AGENTS.md → Contracts. See supabase/README.md → Hosted setup, step 7.
 //
 // Local (signs test tokens with the local JWT secret):
-//   eval "$(supabase status -o env)" && pnpm tsx supabase/scripts/smoke.mts
+//   eval "$(supabase status -o env | sed 's/^/export /')" && pnpm tsx supabase/scripts/smoke.mts
 // Hosted (uses a real Clerk session token; read-only unless --write):
 //   API_URL=https://<ref>.supabase.co ANON_KEY=... TOKEN=<clerk session token> pnpm tsx supabase/scripts/smoke.mts
 //
@@ -11,12 +11,16 @@
 // sample state. It's on by default only for a local API.
 
 import { createHmac, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 const API_URL = required('API_URL');
 const ANON_KEY = required('ANON_KEY');
 const TOKEN = process.env.TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
-const isLocal = ['127.0.0.1', 'localhost'].includes(new URL(API_URL).hostname);
+const isLocal = ['127.0.0.1', 'localhost', '[::1]', '0.0.0.0'].includes(new URL(API_URL).hostname);
+const sampleAlertCount = (
+  JSON.parse(readFileSync(new URL('../../data/campus/samples.json', import.meta.url), 'utf8')) as { alerts: unknown[] }
+).alerts.length;
 const write = isLocal || process.argv.includes('--write');
 
 if (!TOKEN && !(isLocal && JWT_SECRET)) {
@@ -80,9 +84,14 @@ const feedBefore = r.body;
 r = await call('GET', '/rest/v1/elevators?select=id,name,status,verified', { as: 'smoke_student' });
 check('signed-in user reads elevators', okStatus(r) && Array.isArray(r.body) && r.body.length > 0, r);
 
+// A tiny, already-expired polygon, so even if grants are wrong and this lands, routing ignores it.
 r = await call('POST', '/rest/v1/alerts', {
   as: 'smoke_student',
-  json: { type: 'construction', geom: 'SRID=4326;POLYGON((-82.4 29.6,-82.3 29.6,-82.3 29.7,-82.4 29.6))' },
+  json: {
+    type: 'construction',
+    geom: 'SRID=4326;POLYGON((-82.34357 29.64884,-82.34356 29.64884,-82.34356 29.64885,-82.34357 29.64884))',
+    expires_at: '2000-01-01T00:00:00Z',
+  },
 });
 check('direct insert into alerts is refused', r.status === 401 || r.status === 403, r);
 
@@ -103,8 +112,12 @@ if (!write) {
   r = await call('POST', '/rest/v1/rpc/vote_alert', { as: 'smoke_voter', json: { alert_id: reported, kind: 'still_there' } });
   check('vote_alert accepts a vote', okStatus(r), r);
 
+  r = await call('GET', '/rest/v1/elevators?select=status&id=eq.1', { as: 'smoke_student' });
+  const elevatorStatus = Array.isArray(r.body) && r.body.length ? (r.body[0] as { status: string }).status : 'working';
   r = await call('POST', '/rest/v1/rpc/set_elevator_status', { as: 'smoke_student', json: { elevator_id: 1, status: 'out' } });
   check('set_elevator_status records a report', okStatus(r), r);
+  // Put the status back so a hosted run without demo_reset doesn't leave the elevator "out".
+  await call('POST', '/rest/v1/rpc/set_elevator_status', { as: 'smoke_student', json: { elevator_id: 1, status: elevatorStatus } });
 
   const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(1000)]);
   const photo = `smoke_student/${randomUUID()}.jpg`;
@@ -147,8 +160,8 @@ if (!write) {
     const sameAs = (a: unknown, b: unknown) =>
       JSON.stringify([...(a as object[])].map((x) => JSON.stringify(x)).sort()) ===
       JSON.stringify([...(b as object[])].map((x) => JSON.stringify(x)).sort());
-    check('after demo_reset the sample alerts are back', okStatus(r) && Array.isArray(r.body) && r.body.length === 4, r);
-    if (isLocal && Array.isArray(feedBefore) && feedBefore.length === 4) {
+    check('after demo_reset the sample alerts are back', okStatus(r) && Array.isArray(r.body) && r.body.length === sampleAlertCount, r);
+    if (isLocal && Array.isArray(feedBefore) && feedBefore.length === sampleAlertCount) {
       check('after demo_reset the feed matches a fresh seed', sameAs(r.body, feedBefore), r);
     }
   }

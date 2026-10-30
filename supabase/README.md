@@ -55,7 +55,7 @@ Do this with AGENT4 once the Clerk application exists. Every step is needed: the
    ```
    The seed truncates alerts, votes, and elevator reports before loading. Only run it on first setup, or when the graph changes and wiping live alerts is acceptable. It also turns demo mode on. Turn it off afterward unless a presentation is coming.
 6. **Mark facilities accounts.** In Clerk, set `public_metadata.role = "facilities"` on accounts that post verified alerts.
-7. **Smoke-test it.** Get a session token from the app in development (log `await getToken()`), then run:
+7. **Smoke-test it.** Get a session token from the app in development (log `await getToken()`), then run the command right away, since Clerk session tokens expire after about 60 seconds:
    ```bash
    API_URL=https://<ref>.supabase.co ANON_KEY=<anon key> TOKEN=<session token> pnpm tsx supabase/scripts/smoke.mts
    ```
