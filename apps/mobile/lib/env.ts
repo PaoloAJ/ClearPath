@@ -7,12 +7,12 @@ function required(name: string, value: string | undefined): string {
 }
 
 export const env = {
-  clerkPublishableKey: required(
+  get clerkPublishableKey() { return required(
     'EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY',
     process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
-  ),
-  supabaseUrl: required('EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL),
-  supabaseAnonKey: required('EXPO_PUBLIC_SUPABASE_ANON_KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
-  routingApiUrl: required('EXPO_PUBLIC_ROUTING_API_URL', process.env.EXPO_PUBLIC_ROUTING_API_URL),
+  ); },
+  get supabaseUrl() { return required('EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL); },
+  get supabaseAnonKey() { return required('EXPO_PUBLIC_SUPABASE_ANON_KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY); },
+  get routingApiUrl() { return required('EXPO_PUBLIC_ROUTING_API_URL', process.env.EXPO_PUBLIC_ROUTING_API_URL); },
   demoMode: process.env.EXPO_PUBLIC_DEMO_MODE === 'true',
 };
