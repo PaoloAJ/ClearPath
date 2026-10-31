@@ -1,4 +1,4 @@
-# 0003. Pin the React DOM peer to Expo's React version
+# 0004. Pin the React DOM peer to Expo's React version
 
 - Status: proposed
 - Date: 2026-10-30
