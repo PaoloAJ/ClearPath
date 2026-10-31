@@ -95,14 +95,11 @@ export function nextInstruction(steps: Step[], walked: number, destination: stri
 }
 
 /**
- * Edge IDs still ahead. Edges come back in path order but without lengths, so progress is a share of
- * the count. One extra edge is kept so the edge the user is on is never dropped; a passed edge
- * reported as ahead only costs a needless check, while a dropped one would hide a barrier (R2).
+ * The API does not expose edge lengths or geometry boundaries. Keep the full trip until arrival:
+ * distance shares cannot safely identify passed edges when their lengths differ (R2).
  */
 export function remainingEdgeIds(route: RouteOption, walked: number, total: number): number[] {
-  if (total <= 0) return route.edge_ids;
-  const passed = Math.max(0, Math.floor((walked / total) * route.edge_ids.length) - 1);
-  return route.edge_ids.slice(Math.min(passed, route.edge_ids.length - 1));
+  return total > 0 && walked >= total ? [] : route.edge_ids;
 }
 
 /** How far along the path a position is, using its closest point on the path. */

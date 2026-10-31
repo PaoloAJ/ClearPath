@@ -35,6 +35,13 @@ it('keeps the edges still ahead for the route check (R2)', () => {
   expect(remainingEdgeIds(route, 0, 100)).toEqual([1, 2, 3, 4]);
   // The edge the user may still be on is kept.
   expect(remainingEdgeIds(route, 30, 100)).toEqual([1, 2, 3, 4]);
-  expect(remainingEdgeIds(route, 50, 100)).toEqual([2, 3, 4]);
-  expect(remainingEdgeIds(route, 100, 100)).toEqual([4]);
+  expect(remainingEdgeIds(route, 50, 100)).toEqual([1, 2, 3, 4]);
+  expect(remainingEdgeIds(route, 100, 100)).toEqual([]);
+});
+
+it('keeps a long current edge even near the end of an uneven trip', () => {
+  // Lengths could be [100, 1, 1, 1]; proportional edge counts would discard edge 1.
+  const route = { edge_ids: [1, 2, 3, 4] } as RouteOption;
+  expect(remainingEdgeIds(route, 90, 103)).toContain(1);
+  expect(remainingEdgeIds(route, 0, 0)).toEqual(route.edge_ids);
 });

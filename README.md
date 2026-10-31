@@ -456,6 +456,8 @@ Rules for R4 and R5. All of them are configurable in `private.app_settings`, and
 
 Each alert pin and detail screen shows **age**, **confirmations**, and a **verified** badge. Verified items are listed separately from student reports.
 
+The current client conservatively checks all trip edges until arrival because the API does not expose per-edge lengths. A barrier behind the user may still trigger a warning; an uneven edge length must never hide a barrier ahead.
+
 **Realtime flow:** the app subscribes to inserts and updates on `alerts` and `elevators`. During navigation, each new alert triggers `POST /v1/routes/check`. If the alert affects the route, the app shows **Reroute** or **Keep route**. Users with `haptics_only` get a vibration and a spoken cue instead, and the prompt appears once they stop moving.
 
 ---

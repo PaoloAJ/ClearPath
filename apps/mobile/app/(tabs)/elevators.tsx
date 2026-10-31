@@ -29,9 +29,9 @@ export default function ElevatorsScreen() {
         client.from('alerts_feed').select('*').eq('type', 'elevator_out').returns<AlertFeedItem[]>(),
       ]);
       if (rows.error) throw rows.error;
+      if (alerts.error) throw alerts.error;
       setElevators(rows.data ?? []);
-      // "See alert" links are extras; if the alerts query fails, the board still shows every status.
-      setOutAlerts(alerts.error ? [] : activeAlerts(alerts.data ?? []));
+      setOutAlerts(activeAlerts(alerts.data ?? []));
       setNow(new Date());
     } catch {
       setError(true);
