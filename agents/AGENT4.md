@@ -23,7 +23,7 @@ Plus the things that aren't in git: the Clerk application, the hosted Supabase p
 | `.github/workflows/ci.yml` | Mobile (lint, typecheck, test), routing (vet, test), database (reset + pgTAP) jobs. Not yet run on GitHub |
 | `Makefile` | `dev`, `seed`, `test`, `lint`, done |
 | `.env.example` × 2 | Match README → Environment variables |
-| `docs/research.md` | Findings and requirements tables. Participant evidence and usability results are empty |
+| `docs/research.md` | Findings, requirements, and the usability study plan. Participant evidence and usability results are empty |
 | `docs/decisions/` | `0000-template.md`, `0001-stack-and-auth.md` |
 
 ## Contracts
@@ -57,10 +57,10 @@ Plus the things that aren't in git: the Clerk application, the hosted Supabase p
 
 ### M3: Study-ready
 
-- [ ] **Usability study plan** in `docs/research.md`: tasks, success criteria, consent script, what you'll measure (task success, time, errors, SUS or similar).
+- [x] **Usability study plan** in `docs/research.md`: tasks, success criteria, consent script, what you'll measure (task success, time, errors, SUS or similar).
 - [ ] **Run the sessions** in demo mode with AGENT1, resetting with `demo_reset` between participants. Record results.
 - [ ] **Turn findings into issues** tagged with the requirement they affect, and feed threshold tuning to AGENT2.
-- [ ] **Demo script** for the final presentation: one route, one mid-route alert, one report, one elevator check.
+- [x] **Demo script** for the final presentation: one route, one mid-route alert, one report, one elevator check. *In [`docs/demo-script.md`](../docs/demo-script.md). Rehearse it once the app works end to end.*
 - [ ] **README pass**: Team table, Scope checkboxes, and anything that drifted.
 
 ## Rules for this lane
