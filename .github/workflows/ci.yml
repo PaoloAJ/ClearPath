@@ -42,14 +42,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # seed.sql is generated from data/campus. Fail if it was hand-edited or not rebuilt.
-      - uses: pnpm/action-setup@v4
+      # import.ts only uses node: modules, so Node runs it directly with no install.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm seed:build
-      - run: git diff --exit-code supabase/seed.sql
+      - run: node --experimental-strip-types data/campus/import.ts
+      - run: git diff --exit-code supabase/seed.sql || { echo "::error::seed.sql is out of date. Run make seed (or pnpm seed:build) and commit it. Never edit seed.sql by hand."; exit 1; }
       - uses: supabase/setup-cli@v1
         with:
           version: latest

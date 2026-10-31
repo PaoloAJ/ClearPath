@@ -6,6 +6,7 @@
 
 ## Checks
 
+- [ ] Meets the backlog item's acceptance criteria (agents/AGENTn.md)
 - [ ] `make lint test` passes
 - [ ] Tests cover the change
 - [ ] README and contracts still match the code (AGENTS.md → Contracts). If a contract changed, both sides changed here and every "Used by" workstream is asked to review
@@ -18,6 +19,7 @@
 - [ ] Every item in README → Accessibility is checked
 - [ ] Main task run start to finish with VoiceOver or TalkBack. Which one, and on what device:
 - [ ] Screenshot attached
+- [ ] Accessibility note: what was checked and what was found
 
 ## Hand-offs
 
