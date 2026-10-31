@@ -163,6 +163,7 @@ clearpath/
 │       └── import.ts           # GeoJSON → seed.sql
 ├── docs/
 │   ├── research.md             # interview findings, requirements
+│   ├── smoke-check.md          # end-to-end check: phone → Supabase → routing → DB
 │   └── decisions/              # short architecture decision records
 ├── agents/                     # team guide + one file per workstream (AGENT1–4)
 ├── .github/workflows/          # CI: lint, typecheck, go test
@@ -187,8 +188,8 @@ clearpath/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<org>/clearpath.git
-cd clearpath
+git clone https://github.com/PaoloAJ/ClearPath.git
+cd ClearPath
 pnpm install
 ```
 
@@ -226,11 +227,13 @@ supabase db reset       # applies migrations and seed.sql (demo zone + sample da
 ### 4. Run the routing service
 
 ```bash
-cd services/routing
-cp .env.example .env    # fill in values (see below)
-go run ./cmd/server
-# → listening on :8080
+cp services/routing/.env.example services/routing/.env    # fill in values (see below)
+make routing
+# → graph loaded nodes=568 edges=774
+# → listening addr=:8080
 ```
+
+Go doesn't read `.env` files on its own. `make routing` (and `make dev`) export `services/routing/.env` first. To run it by hand, do the same in a subshell so your own shell isn't changed: `(cd services/routing && set -a && . ./.env && set +a && go run ./cmd/server)`.
 
 ### 5. Run the app
 
@@ -498,7 +501,7 @@ R6 is an acceptance criterion for every screen, not a polish pass at the end. A 
 | Accessibility | Manual VoiceOver/TalkBack pass per PR touching UI | Checklist above |
 | Usability | Scripted tasks in demo mode | Plan a route, react to a mid-route alert, report a barrier |
 
-CI runs lint, typecheck, `go test`, and `pnpm test` on every pull request.
+CI runs on every pull request: lint, typecheck, `go test`, `pnpm test`, a check that `seed.sql` matches `data/campus`, and the pgTAP suites against a fresh database. All of it must pass before merging to `main`.
 
 ---
 
@@ -563,8 +566,9 @@ Write a short decision record in `docs/decisions/` whenever you change something
 
 | Name | Role |
 |---|---|
-| _TBD_ | |
-| _TBD_ | |
-| _TBD_ | |
+| Anilov Villanueva | Data & Supabase ([AGENT3](agents/AGENT3.md)), frontend ([AGENT1](agents/AGENT1.md)) |
+| Alvin Cabe | Routing service ([AGENT2](agents/AGENT2.md)) |
+| Lucas Romero-Wyhnanskyj | Platform, auth & Clerk ([AGENT4](agents/AGENT4.md)) |
+| Waleed Freija | Early frontend: auth, travel profile, and map screens |
 
 Built for an HCI course at the University of Florida.

@@ -20,11 +20,11 @@ Plus the things that aren't in git: the Clerk application, the hosted Supabase p
 
 | File | State |
 |---|---|
-| `.github/workflows/ci.yml` | Mobile (lint, typecheck, test), routing (vet, test), database (reset + pgTAP) jobs. Not yet run on GitHub |
+| `.github/workflows/ci.yml` | Mobile (lint, typecheck, test), routing (vet, test), database (seed.sql is current, reset, pgTAP) jobs. All three are required checks on `main` |
 | `Makefile` | `dev`, `seed`, `test`, `lint`, done |
 | `.env.example` × 2 | Match README → Environment variables |
 | `docs/research.md` | Findings, requirements, and the usability study plan. Participant evidence and usability results are empty |
-| `docs/decisions/` | `0000-template.md`, `0001-stack-and-auth.md` |
+| `docs/decisions/` | Template plus 0001 (stack and auth), 0002 (graph from OSM), 0003 (web target deps) |
 
 ## Contracts
 
@@ -40,13 +40,13 @@ Plus the things that aren't in git: the Clerk application, the hosted Supabase p
 - [ ] **Clerk app**: create it, enable email sign-in (optionally Google for UF accounts), add the session token claim `{"app_role": "{{user.public_metadata.role}}"}`, and activate the Supabase integration. Create one test student and one test `facilities` account.
 - [ ] **Clerk domain** in `supabase/config.toml`: set `[auth.third_party.clerk] enabled = true` and the real `domain` together, so local Supabase accepts Clerk tokens. The CLI fetches the domain's OpenID config at startup, so a placeholder breaks `supabase start` and CI.
 - [ ] **Share keys** privately with the team: Clerk publishable + secret keys, the test accounts.
-- [ ] **GitHub**: push the repo, protect `main` (1 approving review, CI must pass), add PR template with an `R1`–`R6` line and an accessibility checkbox.
-- [ ] **CI green** on the first PR. Commit `pnpm-lock.yaml` and `go.sum`.
+- [x] **GitHub**: push the repo, protect `main` (1 approving review, CI must pass), add PR template with an `R1`–`R6` line and an accessibility checkbox.
+- [x] **CI green** on the first PR. Commit `pnpm-lock.yaml` and `go.sum`.
 
 ### M1: Walking skeleton
 
-- [ ] **`make dev` works from a clean clone** on at least two teammates' machines. Fix whatever breaks and update README → Getting started.
-- [ ] **End-to-end smoke check**: sign in on a phone → map loads → route request reaches Go with a valid token → Go reads the DB. Write the steps in `docs/` so anyone can repeat it.
+- [ ] **`make dev` works from a clean clone** on at least two teammates' machines. Fix whatever breaks and update README → Getting started. *Works on one Mac after the `.env` fix (the routing service never read `services/routing/.env`). Still needs a second machine.*
+- [ ] **End-to-end smoke check**: sign in on a phone → map loads → route request reaches Go with a valid token → Go reads the DB. Write the steps in `docs/` so anyone can repeat it. *Steps are in [`docs/smoke-check.md`](../docs/smoke-check.md). The first full run waits on the Clerk app.*
 
 ### M2: v1 features
 
