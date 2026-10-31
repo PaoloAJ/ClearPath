@@ -176,6 +176,8 @@ clearpath/
 
 ## Getting started
 
+**Setting up for a presentation?** Follow the [local demo setup and teammate handoff](DEMO_README.md) for environment files, phone connectivity, the presentation sequence, and troubleshooting.
+
 ### Prerequisites
 
 - Node.js 20+ and pnpm
