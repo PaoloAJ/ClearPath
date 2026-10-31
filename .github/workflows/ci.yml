@@ -41,6 +41,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # seed.sql is generated from data/campus. Fail if it was hand-edited or not rebuilt.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm seed:build
+      - run: git diff --exit-code supabase/seed.sql
       - uses: supabase/setup-cli@v1
         with:
           version: latest
