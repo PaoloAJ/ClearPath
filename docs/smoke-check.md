@@ -18,7 +18,8 @@ DB=postgresql://postgres:postgres@127.0.0.1:54322/postgres
 ## 1. Start everything
 
 ```bash
-make seed    # fresh sample state, so alert ages look right
+supabase start   # make seed resets the database, so the stack has to be running first
+make seed        # fresh sample state, so alert ages look right
 make dev
 ```
 

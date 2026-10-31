@@ -233,7 +233,7 @@ make routing
 # → listening addr=:8080
 ```
 
-Go doesn't read `.env` files on its own. `make routing` (and `make dev`) export `services/routing/.env` first. To run it by hand, do the same: `cd services/routing && set -a && . ./.env && set +a && go run ./cmd/server`.
+Go doesn't read `.env` files on its own. `make routing` (and `make dev`) export `services/routing/.env` first. To run it by hand, do the same in a subshell so your own shell isn't changed: `(cd services/routing && set -a && . ./.env && set +a && go run ./cmd/server)`.
 
 ### 5. Run the app
 

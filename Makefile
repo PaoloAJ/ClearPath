@@ -1,7 +1,8 @@
 .PHONY: dev seed test lint routing mobile
 
 # Go doesn't read .env files, so export services/routing/.env (when present) before starting.
-ROUTING_ENV = set -a; [ ! -f .env ] || . ./.env; set +a
+# The braces keep the `&&` chain intact around it.
+ROUTING_ENV = { set -a; [ ! -f .env ] || . ./.env; set +a; }
 
 # supabase start + routing service + expo, together. Ctrl-C stops the routing service and expo.
 dev:
