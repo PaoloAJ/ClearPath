@@ -45,8 +45,8 @@ Plus the things that aren't in git: the Clerk application, the hosted Supabase p
 
 ### M1: Walking skeleton
 
-- [ ] **`make dev` works from a clean clone** on at least two teammates' machines. Fix whatever breaks and update README → Getting started.
-- [ ] **End-to-end smoke check**: sign in on a phone → map loads → route request reaches Go with a valid token → Go reads the DB. Write the steps in `docs/` so anyone can repeat it.
+- [ ] **`make dev` works from a clean clone** on at least two teammates' machines. Fix whatever breaks and update README → Getting started. *Works on one Mac after the `.env` fix (the routing service never read `services/routing/.env`). Still needs a second machine.*
+- [ ] **End-to-end smoke check**: sign in on a phone → map loads → route request reaches Go with a valid token → Go reads the DB. Write the steps in `docs/` so anyone can repeat it. *Steps are in [`docs/smoke-check.md`](../docs/smoke-check.md). The first full run waits on the Clerk app.*
 
 ### M2: v1 features
 
