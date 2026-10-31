@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AccessibilityInfo, Platform, StyleSheet, Text } from 'react-native';
 
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 
 /** Same announcement behavior as FormError, for non-error feedback (e.g. "code resent"). */
 export function FormStatus({ message }: { message: string | null }) {
@@ -19,5 +19,5 @@ export function FormStatus({ message }: { message: string | null }) {
 }
 
 const styles = StyleSheet.create({
-  status: { fontSize: 16, fontWeight: '600', color: colors.statusWorking },
+  status: { fontFamily: fonts.semibold, fontSize: 16, color: colors.statusWorking },
 });

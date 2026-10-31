@@ -10,10 +10,13 @@ export const campusRegion = {
   latitude: 29.6493, longitude: -82.3443, latitudeDelta: 0.009, longitudeDelta: 0.009,
 };
 
-export const demoBuildings = [
+export interface DemoBuilding { name: string; latitude: number; longitude: number }
+
+// The v1 demo zone. These are also the route destinations.
+export const demoBuildings: DemoBuilding[] = [
   { name: 'Library West', latitude: 29.6516, longitude: -82.3429 },
-  { name: 'Marston', latitude: 29.6481, longitude: -82.3437 },
-  { name: 'Turlington', latitude: 29.6487, longitude: -82.3442 },
+  { name: 'Marston Science Library', latitude: 29.6481, longitude: -82.3437 },
+  { name: 'Turlington Hall', latitude: 29.6487, longitude: -82.3442 },
   { name: 'CSE Building', latitude: 29.6479, longitude: -82.3449 },
 ];
 

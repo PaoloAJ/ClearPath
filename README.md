@@ -266,7 +266,8 @@ make lint       # eslint, tsc --noEmit, go vet
 | `EXPO_PUBLIC_SUPABASE_URL` | Supabase API URL (local: `http://<lan-ip>:54321`) |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/publishable key |
 | `EXPO_PUBLIC_ROUTING_API_URL` | Go routing API base URL (local: `http://<lan-ip>:8080`) |
-| `EXPO_PUBLIC_DEMO_MODE` | `true` to show the demo-mode panel |
+| `EXPO_PUBLIC_DEMO_MODE` | `true` to simulate navigation and enable alert injection with the real backend |
+| `EXPO_PUBLIC_FIXTURE_PREVIEW` | `true` for a development-only profile/map fixture preview without sign-in; keep `false` for backend demos |
 
 ### `services/routing/.env`
 
@@ -455,20 +456,19 @@ Rules for R4 and R5. All of them are configurable in `private.app_settings`, and
 
 Each alert pin and detail screen shows **age**, **confirmations**, and a **verified** badge. Verified items are listed separately from student reports.
 
+The current client conservatively checks all trip edges until arrival because the API does not expose per-edge lengths. A barrier behind the user may still trigger a warning; an uneven edge length must never hide a barrier ahead.
+
 **Realtime flow:** the app subscribes to inserts and updates on `alerts` and `elevators`. During navigation, each new alert triggers `POST /v1/routes/check`. If the alert affects the route, the app shows **Reroute** or **Keep route**. Users with `haptics_only` get a vibration and a spoken cue instead, and the prompt appears once they stop moving.
 
 ---
 
 ## Demo mode
 
-You can't count on a real construction fence showing up during a presentation, so demo mode stages one. Set `EXPO_PUBLIC_DEMO_MODE=true` and long-press the ClearPath logo to open the panel:
+Set `EXPO_PUBLIC_DEMO_MODE=true` and keep `EXPO_PUBLIC_FIXTURE_PREVIEW=false` for a demo connected to Clerk, Supabase, and the routing service. Starting navigation automatically simulates a walk. Tap **Demo: add an alert ahead** on the navigation screen to stage the R2 warning and reroute flow.
 
-- **Simulate walk:** moves a fake location along the current route at walking or rolling speed.
-- **Inject alert ahead:** drops a construction alert on the next segment of the route to trigger the R2 flow.
-- **Toggle elevator:** flips any elevator between working and out.
-- **Reset demo data:** restores `seed.sql` state.
+The controller also provides elevator-toggle and reset functions, but their UI controls and the full logo panel remain pending. Use a dedicated demo database and the setup/reset instructions in [the smoke check](docs/smoke-check.md). Reset deletes alerts, votes, and elevator history.
 
-Demo mode also makes usability-test tasks repeatable from one participant to the next.
+For a profile/map preview without authentication or backend access, set `EXPO_PUBLIC_FIXTURE_PREVIEW=true` in development. This is separate from backend demo mode and does not exercise reporting, routing, or navigation.
 
 On the database side, the demo RPCs (`demo_inject_alert`, `demo_toggle_elevator`, `demo_reset`) only run when `private.app_settings.demo_enabled` is true. `make seed` turns it on locally. On a hosted project, turn it on for a presentation with `update private.app_settings set demo_enabled = true;` and off again afterward. The sample state comes from `data/campus/samples.json`.
 

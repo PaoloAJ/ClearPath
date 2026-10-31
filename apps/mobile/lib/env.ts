@@ -14,5 +14,6 @@ export const env = {
   get supabaseUrl() { return required('EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL); },
   get supabaseAnonKey() { return required('EXPO_PUBLIC_SUPABASE_ANON_KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY); },
   get routingApiUrl() { return required('EXPO_PUBLIC_ROUTING_API_URL', process.env.EXPO_PUBLIC_ROUTING_API_URL); },
+  fixturePreview: process.env.EXPO_PUBLIC_FIXTURE_PREVIEW === 'true',
   demoMode: process.env.EXPO_PUBLIC_DEMO_MODE === 'true',
 };

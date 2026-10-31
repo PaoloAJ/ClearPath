@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/expo';
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -9,7 +10,6 @@ import { createProfileStore } from '@/lib/profile';
 import { useSupabase } from '@/lib/supabase';
 import { colors, spacing } from '@/lib/theme';
 
-// TODO(frontend): add temporary mode, end date, and haptics_only in M2.
 export default function ProfileScreen() {
   const { userId, signOut } = useAuth();
   const client = useSupabase();
@@ -31,7 +31,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {store && <TravelProfile key={userId} store={store} />}
+      {store && <TravelProfile key={userId} store={store} onSaved={() => router.navigate('/')} />}
       <View style={styles.footer}>
         <FormError message={error} />
         <BigButton
@@ -47,5 +47,5 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  footer: { padding: spacing.lg, gap: spacing.md },
+  footer: { paddingHorizontal: 20, paddingBottom: spacing.md, gap: spacing.md },
 });
