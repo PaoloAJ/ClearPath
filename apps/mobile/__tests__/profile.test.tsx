@@ -99,3 +99,14 @@ it('saves the haptics-only preference', async () => {
   await fireEvent.press(screen.getByRole('button', { name: 'Save and open map' }));
   await waitFor(() => expect(store.save).toHaveBeenCalledWith('walking', sampleProfile, expect.objectContaining({ haptics_only: true })));
 });
+
+it('goes back to the usual mode when a temporary one is turned off', async () => {
+  const store = storeFor({ ...sampleProfile, mode: 'wheelchair', temp_mode: 'walking_aid', temp_until: '2999-01-31' });
+  await render(<TravelProfile store={store} />);
+  await screen.findByRole('radio', { name: 'Walking aid', checked: true });
+  await fireEvent.press(screen.getByRole('checkbox', { name: 'This is temporary (like an injury)' }));
+  expect(screen.getByRole('radio', { name: 'Wheelchair', checked: true })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Save and open map' }));
+  await waitFor(() => expect(store.save).toHaveBeenCalledWith('wheelchair', expect.anything(),
+    expect.objectContaining({ temp_mode: null, temp_until: null })));
+});

@@ -44,7 +44,7 @@ export function CampusMap({ store, profile = null, simulated = false, reportedKe
     }).catch(() => { if (active) setError(true); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [store, revision]);
+  }, [store, revision, reportedKey]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);

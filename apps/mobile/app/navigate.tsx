@@ -11,13 +11,13 @@ import { BigButton } from '@/components/BigButton';
 import { Icon } from '@/components/Icon';
 import { routeName } from '@/components/RouteCard';
 import { RouteMap } from '@/components/RouteMap';
-import { createDemoController, demoEnabled, pointAlong } from '@/lib/demo';
+import { createDemoController, demoEnabled } from '@/lib/demo';
 import { alertTypeLabel, formatAge, formatClock, formatDistance, nearestBuilding } from '@/lib/format';
-import { buildSteps, distanceAlong, nextInstruction, pathLength, remainingEdgeIds, routeLatLngs } from '@/lib/navigation';
+import { buildSteps, distanceAlong, nextInstruction, pathLength, pointAlong, remainingEdgeIds, routeLatLngs } from '@/lib/navigation';
 import { useRoutingApi } from '@/lib/routing';
 import { useSupabase } from '@/lib/supabase';
 import { colors, fonts, radius, spacing } from '@/lib/theme';
-import { setTrip, useTrip } from '@/lib/trip';
+import { setTrip, setTripProgress, useTrip } from '@/lib/trip';
 import type { AlertFeedItem, LatLng, RouteOption } from '@/lib/types';
 import { useProfile } from '@/lib/useProfile';
 
@@ -43,8 +43,11 @@ export default function NavigateScreen() {
   const walked = pos && path.length > 1 ? distanceAlong(path, pos) : 0;
 
   // The Realtime callback reads the latest values through refs instead of resubscribing on every step.
-  const latest = useRef({ trip, pos, walked, total });
-  useEffect(() => { latest.current = { trip, pos, walked, total }; });
+  const latest = useRef({ trip, pos, walked, total, hapticsOnly });
+  useEffect(() => {
+    latest.current = { trip, pos, walked, total, hapticsOnly };
+    setTripProgress(walked);
+  });
   // A simulated walk never pauses; real moving comes from GPS speed.
   const moving = demoEnabled || gpsMoving;
 
@@ -66,9 +69,10 @@ export default function NavigateScreen() {
       setGpsMoving((location.coords.speed ?? 0) > 0.5);
     }).then((sub) => { if (active) subscription = sub; else sub.remove(); }).catch(() => {});
     return () => { active = false; subscription?.remove(); };
-    // Only a new route restarts tracking; `path` is derived from it.
+    // A new route object (a reroute) restarts tracking; route ids repeat across responses, so they can't be the key.
+    // `path` is derived from `route`, and `trip.mode` doesn't change mid-trip.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route?.id, client]);
+  }, [route, client]);
 
   const consider = useCallback(async (alertId: string) => {
     const now = latest.current;
@@ -79,7 +83,7 @@ export default function NavigateScreen() {
     if (!alert) return;
     const cue = `New barrier on your route: ${alertTypeLabel(alert.type)} near ${nearestBuilding(alert).name}.`;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    if (hapticsOnly) Speech.speak(`${cue} Stop to choose reroute or keep route.`);
+    if (now.hapticsOnly) Speech.speak(`${cue} Stop to choose reroute or keep route.`);
     else AccessibilityInfo.announceForAccessibility(cue);
     let reroute: RouteOption | null = null;
     try {
@@ -88,12 +92,14 @@ export default function NavigateScreen() {
       reroute = routes.find((option) => option.fits_profile) ?? null;
     } catch { /* The banner still offers Keep route. */ }
     setPending({ alert, reroute });
-  }, [checkRoute, client, getRoutes, hapticsOnly]);
+  }, [checkRoute, client, getRoutes]);
 
   // R2: every new alert is checked against the rest of the route.
   useEffect(() => {
     if (!route) return;
-    const channel = client.channel(`trip-${route.id}`)
+    // A fresh topic each time: removeChannel is async, and reusing a topic hands back the old, already
+    // subscribed channel, which throws when .on() is called on it.
+    const channel = client.channel(`trip-${route.id}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alerts' }, (payload) => {
         const id = (payload.new as { id?: string }).id;
         if (id) void consider(id).catch(() => {});

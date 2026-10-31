@@ -1,5 +1,28 @@
-import { distanceMeters } from '@/lib/demo';
 import type { LatLng, RouteOption } from '@/lib/types';
+
+/** Meters between two points (equirectangular, fine at campus scale). */
+export function distanceMeters(a: LatLng, b: LatLng): number {
+  const lat = ((a.lat + b.lat) / 2) * (Math.PI / 180);
+  const dx = (b.lng - a.lng) * 111_320 * Math.cos(lat);
+  const dy = (b.lat - a.lat) * 110_540;
+  return Math.hypot(dx, dy);
+}
+
+/** The point `meters` along a path, clamped to its end. */
+export function pointAlong(path: LatLng[], meters: number): LatLng {
+  let left = meters;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1]!;
+    const b = path[i]!;
+    const length = distanceMeters(a, b);
+    if (left <= length && length > 0) {
+      const t = left / length;
+      return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t };
+    }
+    left -= length;
+  }
+  return path[path.length - 1] ?? { lat: 0, lng: 0 };
+}
 
 // The routing API returns geometry, not turn-by-turn steps, so instructions are derived here:
 // consecutive segments within 30° of each other are one step.
@@ -72,12 +95,13 @@ export function nextInstruction(steps: Step[], walked: number, destination: stri
 }
 
 /**
- * Edge IDs still ahead, approximated by the share of distance walked. Edges come back in path order,
- * so the ones already passed are dropped from the front.
+ * Edge IDs still ahead. Edges come back in path order but without lengths, so progress is a share of
+ * the count. One extra edge is kept so the edge the user is on is never dropped; a passed edge
+ * reported as ahead only costs a needless check, while a dropped one would hide a barrier (R2).
  */
 export function remainingEdgeIds(route: RouteOption, walked: number, total: number): number[] {
   if (total <= 0) return route.edge_ids;
-  const passed = Math.floor((walked / total) * route.edge_ids.length);
+  const passed = Math.max(0, Math.floor((walked / total) * route.edge_ids.length) - 1);
   return route.edge_ids.slice(Math.min(passed, route.edge_ids.length - 1));
 }
 

@@ -30,7 +30,8 @@ export default function ElevatorsScreen() {
       ]);
       if (rows.error) throw rows.error;
       setElevators(rows.data ?? []);
-      setOutAlerts(activeAlerts(alerts.data ?? []));
+      // "See alert" links are extras; if the alerts query fails, the board still shows every status.
+      setOutAlerts(alerts.error ? [] : activeAlerts(alerts.data ?? []));
       setNow(new Date());
     } catch {
       setError(true);

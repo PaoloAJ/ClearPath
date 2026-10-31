@@ -1,5 +1,4 @@
-import { distanceMeters, pointAlong } from '@/lib/demo';
-import { buildSteps, cardinal, distanceAlong, nextInstruction, remainingEdgeIds } from '@/lib/navigation';
+import { buildSteps, cardinal, distanceAlong, distanceMeters, nextInstruction, pointAlong, remainingEdgeIds } from '@/lib/navigation';
 import type { LatLng, RouteOption } from '@/lib/types';
 
 jest.mock('expo-secure-store', () => ({}));
@@ -34,6 +33,8 @@ it('measures progress by projecting a position onto the path', () => {
 it('keeps the edges still ahead for the route check (R2)', () => {
   const route = { edge_ids: [1, 2, 3, 4] } as RouteOption;
   expect(remainingEdgeIds(route, 0, 100)).toEqual([1, 2, 3, 4]);
-  expect(remainingEdgeIds(route, 50, 100)).toEqual([3, 4]);
+  // The edge the user may still be on is kept.
+  expect(remainingEdgeIds(route, 30, 100)).toEqual([1, 2, 3, 4]);
+  expect(remainingEdgeIds(route, 50, 100)).toEqual([2, 3, 4]);
   expect(remainingEdgeIds(route, 100, 100)).toEqual([4]);
 });

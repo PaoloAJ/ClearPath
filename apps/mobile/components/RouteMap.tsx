@@ -1,14 +1,15 @@
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
-import { AlertPin } from '@/components/AlertPin';
+import { AlertPin, useMarkerTracking } from '@/components/AlertPin';
 import { Icon } from '@/components/Icon';
 import { campusRegion } from '@/lib/alerts';
+import { routeLatLngs } from '@/lib/navigation';
 import { colors } from '@/lib/theme';
 import type { AlertFeedItem, LatLng, RouteOption } from '@/lib/types';
 
 export function routePath(route: RouteOption): { latitude: number; longitude: number }[] {
-  return route.geometry.coordinates.map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+  return routeLatLngs(route).map(({ lat, lng }) => ({ latitude: lat, longitude: lng }));
 }
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
 /** Live map with the Figma route styling: the chosen route solid, alternatives dashed. */
 export function RouteMap({ routes, selectedId, you, destination, alerts = [], enRoute = false, label }: Props) {
   // Draw the chosen route last so it sits on top of the alternatives.
+  const tracking = useMarkerTracking();
   const ordered = [...routes].sort((a, b) => Number(a.id === selectedId) - Number(b.id === selectedId));
   return (
     <MapView style={StyleSheet.absoluteFill} initialRegion={campusRegion} accessibilityLabel={label}
@@ -34,11 +36,11 @@ export function RouteMap({ routes, selectedId, you, destination, alerts = [], en
         : <Polyline key={route.id} coordinates={routePath(route)} strokeColor={colors.textMuted} strokeWidth={3} lineDashPattern={[6, 6]} />)}
       {alerts.map((alert) => <AlertPin key={alert.id} alert={alert} />)}
       {destination && <Marker coordinate={{ latitude: destination.lat, longitude: destination.lng }} anchor={{ x: 0.5, y: 0.5 }}
-        tracksViewChanges={false} accessibilityLabel="Destination entrance">
+        tracksViewChanges={tracking} accessibilityLabel="Destination entrance">
         <Icon name="destination" size={20} />
       </Marker>}
       {you && <Marker coordinate={{ latitude: you.lat, longitude: you.lng }} anchor={{ x: 0.5, y: 0.5 }}
-        tracksViewChanges={false} accessibilityLabel="You are here">
+        tracksViewChanges={tracking} accessibilityLabel="You are here">
         <View style={styles.you}>
           <Icon name={enRoute ? 'you-enroute-halo' : 'you-halo'} size={32} />
           <View style={styles.dot}><Icon name={enRoute ? 'you-enroute' : 'you-dot'} size={20} /></View>

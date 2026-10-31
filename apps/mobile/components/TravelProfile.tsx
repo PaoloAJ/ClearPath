@@ -138,7 +138,11 @@ export function TravelProfile({ store, simulated = false, onSaved }: {
           </View>
 
           <CheckRow label="This is temporary (like an injury)" dashed checked={temporary} disabled={!usualMode && !temporary}
-            onPress={() => { setTemporary((value) => !value); setTempUntil(null); clearNotices(); }} />
+            onPress={() => {
+              // Turning a temporary mode off goes back to the usual one, instead of saving the temporary mode as usual.
+              if (temporary && usualMode) setMode(usualMode);
+              setTemporary((value) => !value); setTempUntil(null); clearNotices();
+            }} />
           {!usualMode && !temporary && <Text style={styles.hint}>Save your usual mode first, then you can add a temporary one.</Text>}
           {temporary && usualMode && mode && <View style={styles.group}>
             <View accessibilityRole="radiogroup" accessibilityLabel="How long" style={styles.durations}>

@@ -14,6 +14,16 @@ export interface Trip {
 }
 
 let current: Trip | null = null;
+// Meters walked on the current route. Updated on every step, so it doesn't notify subscribers.
+let walked = 0;
+
+export function getTripProgress(): number {
+  return walked;
+}
+
+export function setTripProgress(meters: number): void {
+  walked = meters;
+}
 const listeners = new Set<() => void>();
 
 export function getTrip(): Trip | null {
@@ -21,6 +31,7 @@ export function getTrip(): Trip | null {
 }
 
 export function setTrip(trip: Trip | null): void {
+  if (trip?.route !== current?.route) walked = 0;
   current = trip;
   for (const listener of listeners) listener();
 }

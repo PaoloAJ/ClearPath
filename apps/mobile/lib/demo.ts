@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { env } from './env';
+import { pathLength, pointAlong } from './navigation';
 import type { LatLng } from './types';
 
 // Demo mode (README → Demo mode). Only active when EXPO_PUBLIC_DEMO_MODE=true.
@@ -35,30 +36,6 @@ export interface DemoController {
   resetDemoData(): Promise<void>;
 }
 
-/** Meters between two points (equirectangular, fine at campus scale). */
-export function distanceMeters(a: LatLng, b: LatLng): number {
-  const lat = ((a.lat + b.lat) / 2) * (Math.PI / 180);
-  const dx = (b.lng - a.lng) * 111_320 * Math.cos(lat);
-  const dy = (b.lat - a.lat) * 110_540;
-  return Math.hypot(dx, dy);
-}
-
-/** The point `meters` along a path, clamped to its end. */
-export function pointAlong(path: LatLng[], meters: number): LatLng {
-  let left = meters;
-  for (let i = 1; i < path.length; i++) {
-    const a = path[i - 1]!;
-    const b = path[i]!;
-    const length = distanceMeters(a, b);
-    if (left <= length && length > 0) {
-      const t = left / length;
-      return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t };
-    }
-    left -= length;
-  }
-  return path[path.length - 1] ?? { lat: 0, lng: 0 };
-}
-
 export function createDemoController(client: SupabaseClient): DemoController {
   async function call(fn: string, args: Record<string, unknown>) {
     const { error } = await client.rpc(fn, args);
@@ -67,7 +44,7 @@ export function createDemoController(client: SupabaseClient): DemoController {
   return {
     simulateWalk(path, speed, onStep) {
       let walked = 0;
-      const total = path.slice(1).reduce((sum, point, i) => sum + distanceMeters(path[i]!, point), 0);
+      const total = pathLength(path);
       const timer = setInterval(() => {
         walked = Math.min(total, walked + DEMO_SPEED_MPS[speed] * (STEP_MS / 1000));
         onStep(pointAlong(path, walked));

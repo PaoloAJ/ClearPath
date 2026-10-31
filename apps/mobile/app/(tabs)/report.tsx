@@ -73,11 +73,13 @@ export default function ReportScreen() {
   function choose(next: Tile) {
     setTile(next);
     setError('');
-    if (!fix) void locate();
+    // Locate again for every report; a fix from an earlier one would put this alert in the wrong place.
+    setFix(null);
+    void locate();
   }
 
   function reset() {
-    setTile(null); setPhoto(null); setError('');
+    setTile(null); setFix(null); setPhoto(null); setError('');
   }
 
   async function addPhoto() {

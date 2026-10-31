@@ -11,7 +11,8 @@ import { alertConfidence, alertSeverity, alertTypeLabel, formatAge, formatConfir
 import { useRoutingApi } from '@/lib/routing';
 import { PHOTO_BUCKET, useSupabase } from '@/lib/supabase';
 import { colors, fonts, MIN_TAP_TARGET, radius } from '@/lib/theme';
-import { useTrip } from '@/lib/trip';
+import { pathLength, remainingEdgeIds, routeLatLngs } from '@/lib/navigation';
+import { getTripProgress, useTrip } from '@/lib/trip';
 import type { AlertFeedItem, VoteKind } from '@/lib/types';
 
 const THANKS: Record<VoteKind, string> = {
@@ -63,7 +64,8 @@ export default function AlertDetailScreen() {
   useEffect(() => {
     if (!trip || !alert) return;
     let active = true;
-    checkRoute({ remaining_edge_ids: trip.route.edge_ids, alert_id: alert.id })
+    const remaining = remainingEdgeIds(trip.route, getTripProgress(), pathLength(routeLatLngs(trip.route)));
+    checkRoute({ remaining_edge_ids: remaining, alert_id: alert.id })
       .then((result) => { if (active) setOnRoute(result.affected); }).catch(() => {});
     return () => { active = false; };
   }, [checkRoute, trip, alert]);

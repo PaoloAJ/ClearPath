@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 
@@ -28,6 +29,19 @@ export function AlertBadge({ type, size = 40, ring = true }: { type: AlertType; 
   );
 }
 
+/**
+ * Custom marker views are snapshotted on Android. Track changes briefly so the SVG icon has drawn
+ * before the snapshot, then stop so pins don't redraw every frame.
+ */
+export function useMarkerTracking(): boolean {
+  const [tracking, setTracking] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setTracking(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+  return tracking;
+}
+
 type Props = {
   alert: AlertFeedItem;
   onPress?: (alert: AlertFeedItem) => void;
@@ -35,12 +49,13 @@ type Props = {
 
 /** Map pin for an active alert. Its label carries type, age, confirmations, and verified state (R5). */
 export function AlertPin({ alert, onPress }: Props) {
+  const tracking = useMarkerTracking();
   return (
     <Marker
       coordinate={{ latitude: alert.lat, longitude: alert.lng }}
       accessibilityLabel={`${alertTypeLabel(alert.type)}. ${describeAlert(alert)}`}
       onPress={() => onPress?.(alert)}
-      tracksViewChanges={false}
+      tracksViewChanges={tracking}
     >
       <AlertBadge type={alert.type} />
     </Marker>

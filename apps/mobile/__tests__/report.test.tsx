@@ -37,6 +37,19 @@ it('reports a barrier in two taps with the GPS location (R4)', async () => {
   expect(router.navigate).toHaveBeenCalledWith({ pathname: '/', params: { reported: expect.any(String) } });
 });
 
+it('finds the location again for each report', async () => {
+  mockRpc.mockResolvedValue({ error: null });
+  await render(<ReportScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Elevator out' }));
+  await screen.findByText('Near Marston Science Library');
+  await fireEvent.press(screen.getByRole('button', { name: 'Send report' }));
+  await waitFor(() => expect(router.navigate).toHaveBeenCalled());
+  jest.mocked(Location.getCurrentPositionAsync).mockResolvedValue({ coords: { latitude: 29.6479, longitude: -82.3450, accuracy: 5 } } as never);
+  await fireEvent.press(screen.getByRole('button', { name: 'Path blocked' }));
+  expect(await screen.findByText('Near CSE Building')).toBeTruthy();
+  expect(Location.getCurrentPositionAsync).toHaveBeenCalledTimes(2);
+});
+
 it('maps Figma tiles onto the alert types the database accepts', async () => {
   mockRpc.mockResolvedValue({ error: null });
   await render(<ReportScreen />);
