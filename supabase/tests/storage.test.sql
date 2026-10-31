@@ -43,7 +43,7 @@ select throws_ok(
 select pg_temp.act_as('user_b');
 
 select is(
-  (select count(*)::int from storage.objects where bucket_id = 'report-photos'),
+  (select count(*)::int from storage.objects where bucket_id = 'report-photos' and name = 'user_a/report-1.jpg'),
   1,
   'signed-in users can read any report photo'
 );
@@ -52,7 +52,8 @@ update storage.objects set name = 'user_b/stolen.jpg' where name = 'user_a/repor
 
 reset role;
 select is(
-  (select name from storage.objects where bucket_id = 'report-photos'),
+  (select name from storage.objects where bucket_id = 'report-photos'
+     and name in ('user_a/report-1.jpg', 'user_b/stolen.jpg')),
   'user_a/report-1.jpg',
   'nobody can rename someone else''s photo'
 );
