@@ -1,11 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { router } from 'expo-router';
 
 import { CampusMap } from '@/components/CampusMap';
-import { activeAlerts, campusRegion, demoBuildings } from '@/lib/alerts';
-import { sampleAlerts } from '@/lib/fixtures';
+import { activeAlerts, campusRegion } from '@/lib/alerts';
+import { sampleAlerts, sampleProfile } from '@/lib/fixtures';
 
 jest.mock('expo-secure-store', () => ({}));
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), navigate: jest.fn() } }));
+jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
 jest.mock('react-native-maps', () => {
   const { View, Pressable } = jest.requireActual<typeof import('react-native')>('react-native');
   return {
@@ -15,49 +17,64 @@ jest.mock('react-native-maps', () => {
   };
 });
 
-beforeEach(() => { jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValue(false); });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => jest.clearAllMocks());
 
-it('shows four sample alerts and the demo-zone map without requesting location', async () => {
+it('lists the sample alerts under Near you and shows the demo-zone map without location in preview', async () => {
   await render(<CampusMap store={{ load: async () => sampleAlerts() }} simulated />);
   await screen.findByText('4 active alerts');
   const map = screen.getByLabelText('UF demo zone campus map');
   expect(map.props.initialRegion).toEqual(campusRegion);
   expect(map.props.showsUserLocation).toBe(false);
-  for (const building of demoBuildings) expect(screen.getByLabelText(building.name)).toBeTruthy();
   expect(screen.getByText(/Invented sample alerts/)).toBeTruthy();
+  expect(screen.getByText('Construction: Library West')).toBeTruthy();
 });
 
-it('selects an alert pin and displays its trust summary', async () => {
+it('lists Facilities posts apart from student reports (R5)', async () => {
   await render(<CampusMap store={{ load: async () => sampleAlerts() }} />);
   await screen.findByText('4 active alerts');
-  await fireEvent.press(screen.getByLabelText(/Construction\. .*3 confirmations, verified/));
-  await screen.findByText('Facilities verified');
-});
-
-it('offers the same alerts in separate verified and student list sections', async () => {
-  await render(<CampusMap store={{ load: async () => sampleAlerts() }} />);
-  await screen.findByText('4 active alerts');
-  await fireEvent.press(screen.getByRole('button', { name: 'Show alert list' }));
-  expect(screen.queryByLabelText('UF demo zone campus map')).toBeNull();
-  expect(screen.getByRole('header', { name: 'Facilities verified' })).toBeTruthy();
-  expect(screen.getByRole('header', { name: 'Student reports · Unverified' })).toBeTruthy();
-  for (const type of ['Construction', 'Blocked path', 'Broken ramp', 'Flooding']) expect(screen.getByText(type)).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'UF Facilities · Verified' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'Student reports' })).toBeTruthy();
+  expect(screen.getByText(/Verified by UF Facilities/)).toBeTruthy();
   expect(screen.getByText(/no confirmations yet/)).toBeTruthy();
 });
 
-it('starts in list mode when a screen reader is enabled', async () => {
-  jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValue(true);
-  await render(<CampusMap store={{ load: async () => sampleAlerts() }} />);
-  await screen.findByRole('button', { name: 'Show map' });
-  expect(screen.queryByLabelText('UF demo zone campus map')).toBeNull();
+it('opens an alert from its row or its pin', async () => {
+  const alerts = sampleAlerts();
+  await render(<CampusMap store={{ load: async () => alerts }} />);
+  await screen.findByText('4 active alerts');
+  await fireEvent.press(screen.getByRole('button', { name: /^Flooding: CSE Building\./ }));
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/alert/[id]', params: { id: alerts[3]!.id } });
+  await fireEvent.press(screen.getByLabelText(/Construction\. .*3 confirmations, verified/));
+  expect(router.push).toHaveBeenLastCalledWith({ pathname: '/alert/[id]', params: { id: alerts[0]!.id } });
 });
 
-it('shows load errors and can refresh successfully', async () => {
+it('goes to route options, reporting, and profile editing', async () => {
+  await render(<CampusMap store={{ load: async () => [] }} profile={{ ...sampleProfile, mode: 'wheelchair' }} />);
+  expect(await screen.findByText('Routing for Wheelchair')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Where to?' }));
+  expect(router.push).toHaveBeenCalledWith('/routes');
+  await fireEvent.press(screen.getByRole('button', { name: 'Report a barrier' }));
+  expect(router.navigate).toHaveBeenCalledWith('/report');
+  await fireEvent.press(screen.getByRole('link', { name: 'Edit travel profile' }));
+  expect(router.navigate).toHaveBeenCalledWith('/profile');
+});
+
+it('shows a temporary mode and its end date on the profile chip', async () => {
+  const profile = { ...sampleProfile, mode: 'walking' as const, temp_mode: 'walking_aid' as const, temp_until: '2999-01-31' };
+  await render(<CampusMap store={{ load: async () => [] }} profile={profile} />);
+  expect(await screen.findByText('Walking aid until Jan 31')).toBeTruthy();
+});
+
+it('confirms a sent report', async () => {
+  await render(<CampusMap store={{ load: async () => [] }} reportedKey="123" />);
+  expect(await screen.findByText(/on the map now/)).toBeTruthy();
+});
+
+it('shows load errors and can try again', async () => {
   const load = jest.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(sampleAlerts());
   await render(<CampusMap store={{ load }} />);
   await screen.findByRole('alert');
-  await fireEvent.press(screen.getByRole('button', { name: 'Refresh alerts' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
   await screen.findByText('4 active alerts');
   expect(screen.queryByRole('alert')).toBeNull();
 });

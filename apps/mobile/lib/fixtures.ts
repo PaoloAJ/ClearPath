@@ -22,8 +22,8 @@ export const fixtureProfileStore: ProfileStore = {
     }
     return { ...sampleProfile, mode: parsed.mode as Profile['mode'] };
   },
-  async save(mode) {
-    const profile: Profile = { ...sampleProfile, mode, updated_at: new Date().toISOString() };
+  async save(mode, _existing, extras = {}) {
+    const profile: Profile = { ...sampleProfile, ...extras, mode, updated_at: new Date().toISOString() };
     await SecureStore.setItemAsync(key, JSON.stringify(profile));
     return profile;
   },

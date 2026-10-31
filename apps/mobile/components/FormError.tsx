@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AccessibilityInfo, Platform, StyleSheet, Text } from 'react-native';
 
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 
 /**
  * R6: a `Text` that just mounted isn't announced by VoiceOver, and
@@ -24,5 +24,5 @@ export function FormError({ message }: { message: string | null }) {
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 16, fontWeight: '600', color: colors.statusOut },
+  error: { fontFamily: fonts.semibold, fontSize: 16, color: colors.statusOutText },
 });

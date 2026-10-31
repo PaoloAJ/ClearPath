@@ -1,39 +1,57 @@
-import { Marker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
+import { Marker } from 'react-native-maps';
 
-import { alertTypeLabel, describeAlert } from '@/lib/format';
-import type { AlertFeedItem } from '@/lib/types';
-import { colors, MIN_TAP_TARGET, spacing } from '@/lib/theme';
+import { Icon, type IconName } from '@/components/Icon';
+import { alertSeverity, alertTypeLabel, describeAlert } from '@/lib/format';
+import { colors, fonts } from '@/lib/theme';
+import type { AlertFeedItem, AlertType } from '@/lib/types';
+
+// Figma pins: elevator out and blocked paths use the close mark, construction the cone,
+// broken ramps the bricks. Types without a pin icon in the design show "!".
+const PIN_ICONS: Partial<Record<AlertType, IconName>> = {
+  elevator_out: 'pin-elevator-out',
+  blocked_path: 'pin-elevator-out',
+  construction: 'pin-construction',
+  broken_ramp: 'pin-bricks',
+};
+
+/** The 40 pt round pin, shared by the map and the new-alert banner. */
+export function AlertBadge({ type, size = 40, ring = true }: { type: AlertType; size?: number; ring?: boolean }) {
+  const icon = PIN_ICONS[type];
+  return (
+    <View style={[styles.badge, ring && styles.ring, {
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: alertSeverity(type) === 'high' ? colors.statusOut : colors.pinOrange,
+    }]}>
+      {icon ? <Icon name={icon} size={size / 2} /> : <Text style={[styles.bang, { fontSize: size * 0.4 }]}>!</Text>}
+    </View>
+  );
+}
 
 type Props = {
   alert: AlertFeedItem;
   onPress?: (alert: AlertFeedItem) => void;
 };
 
-/** Map pin for an active alert. Shows age, confirmations, and verified state (R5). */
+/** Map pin for an active alert. Its label carries type, age, confirmations, and verified state (R5). */
 export function AlertPin({ alert, onPress }: Props) {
   return (
     <Marker
       coordinate={{ latitude: alert.lat, longitude: alert.lng }}
-      title={alertTypeLabel(alert.type)}
-      description={describeAlert(alert)}
       accessibilityLabel={`${alertTypeLabel(alert.type)}. ${describeAlert(alert)}`}
-      accessibilityHint="Shows this alert's summary below the map"
       onPress={() => onPress?.(alert)}
+      tracksViewChanges={false}
     >
-      <View style={styles.pin}>
-        <Text style={styles.title}>{alertTypeLabel(alert.type)}</Text>
-        <Text style={styles.meta}>{describeAlert(alert)}</Text>
-        {!alert.verified && <Text style={styles.meta}>Student report · Unverified</Text>}
-      </View>
+      <AlertBadge type={alert.type} />
     </Marker>
   );
 }
 
 const styles = StyleSheet.create({
-  pin: { minHeight: MIN_TAP_TARGET, minWidth: MIN_TAP_TARGET, width: 150,
-    backgroundColor: colors.background, borderColor: colors.primary, borderWidth: 2,
-    borderRadius: 8, padding: spacing.sm },
-  title: { fontSize: 14, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 14, color: colors.text },
+  badge: { alignItems: 'center', justifyContent: 'center' },
+  ring: {
+    borderWidth: 3, borderColor: colors.background,
+    shadowColor: colors.shadow, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+  },
+  bang: { fontFamily: fonts.extrabold, color: colors.onPrimary },
 });

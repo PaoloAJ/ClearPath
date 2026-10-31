@@ -1,23 +1,24 @@
 import { StyleSheet } from 'react-native';
 
-import { colors, spacing } from '@/lib/theme';
+import { colors, fonts, radius, spacing } from '@/lib/theme';
 
 /** Shared by the sign-in and sign-up screens, which are the same form shape. */
 export const authStyles = StyleSheet.create({
   container: { flex: 1, padding: spacing.lg, gap: spacing.md, backgroundColor: colors.background },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text },
-  body: { fontSize: 16, color: colors.textMuted },
+  title: { fontFamily: fonts.extrabold, fontSize: 27, lineHeight: 31, color: colors.text },
+  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.textMuted },
   field: { gap: spacing.xs },
-  label: { fontSize: 16, fontWeight: '600', color: colors.text },
+  label: { fontFamily: fonts.bold, fontSize: 15, color: colors.text },
   input: {
     minHeight: 48,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.text,
   },
   link: { marginTop: spacing.sm, minHeight: 48, justifyContent: 'center' },
-  linkText: { fontSize: 16, color: colors.primary, fontWeight: '600' },
+  linkText: { fontFamily: fonts.bold, fontSize: 15, color: colors.primary },
 });
