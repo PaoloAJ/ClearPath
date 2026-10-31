@@ -163,6 +163,7 @@ clearpath/
 │       └── import.ts           # GeoJSON → seed.sql
 ├── docs/
 │   ├── research.md             # interview findings, requirements
+│   ├── smoke-check.md          # end-to-end check: phone → Supabase → routing → DB
 │   └── decisions/              # short architecture decision records
 ├── agents/                     # team guide + one file per workstream (AGENT1–4)
 ├── .github/workflows/          # CI: lint, typecheck, go test
@@ -187,8 +188,8 @@ clearpath/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<org>/clearpath.git
-cd clearpath
+git clone https://github.com/PaoloAJ/ClearPath.git
+cd ClearPath
 pnpm install
 ```
 
@@ -226,11 +227,13 @@ supabase db reset       # applies migrations and seed.sql (demo zone + sample da
 ### 4. Run the routing service
 
 ```bash
-cd services/routing
-cp .env.example .env    # fill in values (see below)
-go run ./cmd/server
-# → listening on :8080
+cp services/routing/.env.example services/routing/.env    # fill in values (see below)
+make routing
+# → graph loaded nodes=568 edges=774
+# → listening addr=:8080
 ```
+
+Go doesn't read `.env` files on its own. `make routing` (and `make dev`) export `services/routing/.env` first. To run it by hand, do the same: `cd services/routing && set -a && . ./.env && set +a && go run ./cmd/server`.
 
 ### 5. Run the app
 

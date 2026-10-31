@@ -1,10 +1,13 @@
 .PHONY: dev seed test lint routing mobile
 
+# Go doesn't read .env files, so export services/routing/.env (when present) before starting.
+ROUTING_ENV = set -a; [ ! -f .env ] || . ./.env; set +a
+
 # supabase start + routing service + expo, together. Ctrl-C stops the routing service and expo.
 dev:
 	supabase start
 	trap 'kill 0' INT TERM EXIT; \
-	(cd services/routing && go run ./cmd/server) & \
+	(cd services/routing && $(ROUTING_ENV) && go run ./cmd/server) & \
 	(cd apps/mobile && pnpm expo start) & \
 	wait
 
@@ -23,7 +26,7 @@ lint:
 	cd services/routing && go vet ./...
 
 routing:
-	cd services/routing && go run ./cmd/server
+	cd services/routing && $(ROUTING_ENV) && go run ./cmd/server
 
 mobile:
 	cd apps/mobile && pnpm expo start
