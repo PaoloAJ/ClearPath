@@ -563,8 +563,9 @@ Write a short decision record in `docs/decisions/` whenever you change something
 
 | Name | Role |
 |---|---|
-| _TBD_ | |
-| _TBD_ | |
-| _TBD_ | |
+| Anilov Villanueva | Data & Supabase ([AGENT3](agents/AGENT3.md)), frontend ([AGENT1](agents/AGENT1.md)) |
+| Alvin Cabe | Routing service ([AGENT2](agents/AGENT2.md)) |
+| Lucas Romero-Wyhnanskyj | Platform, auth & Clerk ([AGENT4](agents/AGENT4.md)) |
+| Waleed Freija | Early frontend: auth, travel profile, and map screens |
 
 Built for an HCI course at the University of Florida.
